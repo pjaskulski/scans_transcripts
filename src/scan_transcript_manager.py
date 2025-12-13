@@ -21,6 +21,7 @@ class ManuscriptEditor:
 
         self.api_key = ""
         self.prompt_text = ""
+        self.prompt_filename_var = tk.StringVar(value="Brak promptu")
         self._init_environment()
 
         self.file_pairs = []
@@ -97,8 +98,8 @@ class ManuscriptEditor:
         self.text_area.pack(side=LEFT, fill=BOTH, expand=True, padx=5, pady=5)
 
         # pasek narzędzi
-        self.toolbar = ttk.Frame(self.right_frame, padding=10)
-        self.toolbar.pack(fill=X)
+        self.toolbar = ttk.Frame(self.right_frame, padding=(0, 10, 0, 5))
+        self.toolbar.pack(fill=X, padx=(5,0))
 
         # przyciski
         ttk.Button(self.toolbar,
@@ -116,12 +117,17 @@ class ManuscriptEditor:
                    command=self.save_current_text,
                    bootstyle="success").pack(side=LEFT, fill=X, expand=True, padx=5)
 
-        self.btn_ai = ttk.Button(self.toolbar,
+        # Gemini
+        frame_ai = ttk.Frame(self.toolbar)
+        frame_ai.pack(side=LEFT, fill=X, expand=True)
+
+        self.btn_ai = ttk.Button(frame_ai,
                                  text="Gemini",
                                  command=self.start_ai_transcription,
                                  bootstyle="danger")
-        self.btn_ai.pack(side=LEFT, fill=X, expand=True, padx=5)
+        self.btn_ai.pack(side=LEFT, fill=X, expand=True, padx=2)
 
+        # zapis wyników
         ttk.Button(self.toolbar,
                    text="TXT",
                    command=self.export_all_data,
@@ -142,6 +148,17 @@ class ManuscriptEditor:
                    command=self.next_file,
                    bootstyle="outline-secondary").pack(side=RIGHT, fill=X, expand=True, padx=2)
 
+
+        # pasek stanu promptu
+        self.prompt_status_frame = ttk.Frame(self.right_frame, bootstyle="light")
+        self.prompt_status_frame.pack(fill=X, padx=(5,0), pady=(0, 5))
+
+        ttk.Label(self.prompt_status_frame, textvariable=self.prompt_filename_var,
+                  font=("Segoe UI", 8), bootstyle="secondary").pack(side=LEFT, padx=5, pady=2)
+
+        # przycisk zmiany promptu
+        ttk.Button(self.prompt_status_frame, text="[ZMIEŃ PROMPT]", command=self.select_prompt_file,
+                   bootstyle="link-secondary", cursor="hand2", padding=0).pack(side=RIGHT, padx=5)
 
         # skróty klawiszowe
         self.root.bind("<Control-s>", lambda e: self.save_current_text())
@@ -164,15 +181,17 @@ class ManuscriptEditor:
 
         self.api_key = os.environ.get("GEMINI_API_KEY")
 
-        prompt_path = "prompt.txt"
+        prompt_path = "../prompt/prompt_handwritten_pol_xx_century.txt"
         if os.path.exists(prompt_path):
             try:
                 with open(prompt_path, 'r', encoding='utf-8') as f:
                     self.prompt_text = f.read()
+                filename = os.path.basename(prompt_path)
+                self.prompt_filename_var.set(f"Prompt: {filename}")
             except Exception as e:
-                messagebox.showerror("Błąd", f"Nie można wczytać prompt.txt: {e}")
+                messagebox.showerror("Błąd", f"Nie można wczytać {filename}: {e}")
         else:
-            messagebox.showerror("Brak pliku prompt.txt!", str(e))
+            messagebox.showerror("Pred użyciem Gemini wskaż plik z promptem.", str(e))
 
 
     def select_folder(self):
@@ -259,6 +278,30 @@ class ManuscriptEditor:
             print(f"Błąd rysowania: {e}")
 
 
+    def load_prompt_content(self, filepath):
+        """ wczytuje treść promptu z pliku """
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                self.prompt_text = f.read()
+
+            filename = os.path.basename(filepath)
+            self.prompt_filename_var.set(f"Prompt: {filename}")
+            return True
+        except Exception as e:
+            messagebox.showerror("Błąd promptu", f"Nie można wczytać pliku:\n{e}")
+            return False
+
+
+    def select_prompt_file(self):
+        """ okno dialogowe wyboru pliku promptu """
+        filename = filedialog.askopenfilename(
+            title="Wybierz plik z promptem",
+            filetypes=[("Pliki tekstowe", "*.txt"), ("Wszystkie pliki", "*.*")]
+        )
+        if filename:
+            self.load_prompt_content(filename)
+
+
     def on_mouse_down(self, event):
         """ obsługa myszy - naciśnięcie klawisza """
         self.last_mouse_x = event.x
@@ -321,6 +364,9 @@ class ManuscriptEditor:
 
     def first_file(self):
         """ przejście do pierwszego pliku """
+        if self.is_transcribing:
+            return
+
         self.save_current_text(silent=True)
         if self.current_index != 0:
             self.current_index = 0
@@ -329,6 +375,9 @@ class ManuscriptEditor:
 
     def next_file(self):
         """ przejście do następnego pliku """
+        if self.is_transcribing:
+            return
+
         self.save_current_text(silent=True)
         if self.current_index < len(self.file_pairs) - 1:
             self.current_index += 1
@@ -337,6 +386,9 @@ class ManuscriptEditor:
 
     def prev_file(self):
         """ przejście do poprzedniego pliku """
+        if self.is_transcribing:
+            return
+
         self.save_current_text(silent=True)
         if self.current_index > 0:
             self.current_index -= 1
@@ -345,6 +397,9 @@ class ManuscriptEditor:
 
     def last_file(self):
         """ przejście do ostatniego pliku """
+        if self.is_transcribing:
+            return
+
         self.save_current_text(silent=True)
         if self.current_index < len(self.file_pairs) - 1:
             self.current_index = len(self.file_pairs) - 1
