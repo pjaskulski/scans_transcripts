@@ -1,11 +1,15 @@
 """ przeglądarka skanów i transkrypcji """
 import os
+import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from docx import Document
+from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 
 
 class ManuscriptEditor:
@@ -14,6 +18,10 @@ class ManuscriptEditor:
         self.root = root
         self.root.title("Przeglądarka Skanów i Transkrypcji")
         self.root.geometry("1600x900")
+
+        self.api_key = ""
+        self.prompt_text = ""
+        self._init_environment()
 
         self.file_pairs = []
         self.current_index = 0
@@ -24,6 +32,8 @@ class ManuscriptEditor:
         self.img_y = 0
         self.last_mouse_x = 0
         self.last_mouse_y = 0
+        self.is_transcribing = False
+        self.btn_ai = None
 
         # główny kontener
         self.paned = ttk.Panedwindow(root, orient=HORIZONTAL)
@@ -106,6 +116,12 @@ class ManuscriptEditor:
                    command=self.save_current_text,
                    bootstyle="success").pack(side=LEFT, fill=X, expand=True, padx=5)
 
+        self.btn_ai = ttk.Button(self.toolbar,
+                                 text="Gemini",
+                                 command=self.start_ai_transcription,
+                                 bootstyle="danger")
+        self.btn_ai.pack(side=LEFT, fill=X, expand=True, padx=5)
+
         ttk.Button(self.toolbar,
                    text="TXT",
                    command=self.export_all_data,
@@ -134,7 +150,29 @@ class ManuscriptEditor:
         self.root.bind("<Control-q>", lambda e: self.on_close())
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
+        # pasek postępu (domyślnie ukryty)
+        self.progress_bar = ttk.Progressbar(self.right_frame,
+                                            mode='indeterminate',
+                                            bootstyle="success-striped")
+
         self.select_folder()
+
+
+    def _init_environment(self):
+        """ ładowanie zmiennych środowiskowych i promptu """
+        load_dotenv()
+
+        self.api_key = os.environ.get("GEMINI_API_KEY")
+
+        prompt_path = "prompt.txt"
+        if os.path.exists(prompt_path):
+            try:
+                with open(prompt_path, 'r', encoding='utf-8') as f:
+                    self.prompt_text = f.read()
+            except Exception as e:
+                messagebox.showerror("Błąd", f"Nie można wczytać prompt.txt: {e}")
+        else:
+            messagebox.showerror("Brak pliku prompt.txt!", str(e))
 
 
     def select_folder(self):
@@ -249,8 +287,8 @@ class ManuscriptEditor:
 
     def save_current_text(self, silent=False):
         """
-        Zapis bieżącej zawartości pola tekstowego w pliku.
-        Parametr 'silent=True' wyłącza 'mruganie' etykietą (przy przełączaniu stron).
+        zapis bieżącej zawartości pola tekstowego w pliku,
+        parametr 'silent=True' wyłącza 'mruganie' etykietą (przy przełączaniu stron).
         """
         if not self.file_pairs:
             return
@@ -314,7 +352,7 @@ class ManuscriptEditor:
 
 
     def export_all_data(self):
-        """ eksportuje wszystkie transkrypcje do jednego pliku txt """
+        """ eksport wszystkich transkrypcji do jednego pliku txt """
         self.save_current_text(silent=True)
 
         if not self.file_pairs:
@@ -322,7 +360,7 @@ class ManuscriptEditor:
             return
 
         target_path = filedialog.asksaveasfilename(
-            title="Wybierz miejsce zapisu scalonej transkrypcji",
+            title="Wybierz miejsce zapisu scalonego pliku TXT",
             defaultextension=".txt",
             filetypes=[("Plik tekstowy", "*.txt")]
         )
@@ -347,20 +385,23 @@ class ManuscriptEditor:
                 f.write(final_text)
 
             messagebox.showinfo("Sukces",
-                                f"Pomyślnie wyeksportowano {len(merged_content)} fragmentów do pliku:\n{os.path.basename(target_path)}")
+                                f"Utworzono plik:\n{os.path.basename(target_path)}")
 
         except Exception as e:
             messagebox.showerror("Błąd eksportu", f"Wystąpił błąd podczas zapisu:\n{e}")
 
 
     def export_all_data_docx(self):
-        """ Eksport do DOCX z łączeniem wyrazów """
+        """ eksport do pliku docx z łączeniem wyrazów """
         self.save_current_text(True)
         if not self.file_pairs:
             return
 
-        path = filedialog.asksaveasfilename(defaultextension=".docx",
-                                            filetypes=[("Word Document", "*.docx")])
+        path = filedialog.asksaveasfilename(
+            title="Wybierz miejsce zapisu scalonego pliku DOCX",
+            defaultextension=".docx",
+            filetypes=[("dokument Word", "*.docx")])
+
         if not path:
             return
 
@@ -445,7 +486,7 @@ class ManuscriptEditor:
 
             # okno lupy
             top = tk.Toplevel(self.root)
-            top.transient(self.root) # info dla menedżera okien, że to okno jest "pomocnicze" dla głównego
+            top.transient(self.root) # info dla menedżera okien, że okno jest "pomocnicze" dla głównego
             top.overrideredirect(True) # usunięcie belki tytułowej i ramek
 
             # pozycjonowanie okna - wycentrowane na kursorze
@@ -453,7 +494,6 @@ class ManuscriptEditor:
             pos_y = int(event.y_root - (MAG_HEIGHT / 2))
             top.geometry(f"{MAG_WIDTH}x{MAG_HEIGHT}+{pos_x}+{pos_y}")
 
-            # dodatkowa ramka dla estetyki (np. kolor 'info' z bootstrapa)
             frame = ttk.Frame(top, bootstyle="info", padding=2)
             frame.pack(fill=BOTH, expand=True)
 
@@ -475,10 +515,99 @@ class ManuscriptEditor:
             top.bind("<Escape>", close_magnifier)
             top.bind("<FocusOut>", close_magnifier)
 
-
-
         except Exception as e:
             print(f"Błąd lupy: {e}")
+
+
+    def start_ai_transcription(self):
+        """ inicjuje proces transkrypcji w tle """
+        if not self.file_pairs or self.is_transcribing:
+            return
+
+        if not self.prompt_text:
+            messagebox.showerror("Błąd konfiguracji", "Brak pliku prompt.txt")
+            return
+
+        if not self.api_key:
+            messagebox.showerror("Błąd konfiguracji", "Brak klucza GEMINI_API_KEY w pliku .env")
+            return
+
+        # blokada interfejsu
+        self.is_transcribing = True
+        self.btn_ai.config(state="disabled", text="Przetwarzanie...")
+        self.text_area.config(state="disabled") # bg="#222222" ?
+        self.progress_bar.pack(fill=X, pady=(0, 10), before=self.editor_frame)
+        self.progress_bar.start(10)
+
+        current_pair = self.file_pairs[self.current_index]
+        img_path = current_pair['img']
+
+        # uruchomienie wątku
+        thread = threading.Thread(target=self._ai_worker, args=(img_path,))
+        thread.daemon = True
+        thread.start()
+
+
+    def _ai_worker(self, image_path):
+        """ wywołanie modelu pzez API, kod wykonywany w oddzielnym wątku """
+        try:
+            client = genai.Client(api_key=self.api_key)
+
+            with open(image_path, 'rb') as f:
+                image_bytes = f.read()
+
+            model_name = "gemini-3-pro-preview"
+
+            contents = [
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part.from_text(text=self.prompt_text),
+                        types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg')
+                    ]
+                )
+            ]
+
+            generate_content_config = types.GenerateContentConfig(
+                temperature=0,
+                thinkingConfig=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW),
+                media_resolution=types.MediaResolution.MEDIA_RESOLUTION_HIGH
+            )
+
+            response = client.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config=generate_content_config
+            )
+
+            result_text = response.text
+
+            # przekazanie wyniku do wątku głównego
+            self.root.after(0, self._ai_finished, True, result_text)
+
+        except Exception as e:
+            self.root.after(0, self._ai_finished, False, str(e))
+
+
+    def _ai_finished(self, success, content):
+        """ aktualizacja GUI po zakończeniu pracy wątku """
+        self.progress_bar.stop()
+        self.progress_bar.pack_forget()
+        self.is_transcribing = False
+
+        self.btn_ai.config(state="normal", text="Gemini")
+        self.text_area.config(state="normal")
+
+        if success:
+            # wstawienie tekstu
+            self.text_area.delete(1.0, tk.END)
+            self.text_area.insert(tk.END, content)
+
+            # automatyczny zapis
+            self.save_current_text(silent=False)
+            messagebox.showinfo("Sukces", "Transkrypcja zakończona pomyślnie.")
+        else:
+            messagebox.showerror("Błąd transkrypcji", f"Wystąpił błąd:\n{content}")
 
 
 # ----------------------------------- MAIN -------------------------------------
