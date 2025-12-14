@@ -5,7 +5,7 @@ import threading
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageOps, ImageEnhance
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.widgets.scrolled import ScrolledFrame
@@ -38,12 +38,16 @@ class ManuscriptEditor:
         self.file_pairs = []
         self.current_index = 0
         self.original_image = None
+        self.processed_image = None
         self.tk_image = None
         self.scale = 1.0
         self.img_x = 0
         self.img_y = 0
         self.last_mouse_x = 0
         self.last_mouse_y = 0
+
+        self.active_filter = "normal"
+
         self.is_transcribing = False
         self.btn_ai = None
 
@@ -79,11 +83,30 @@ class ManuscriptEditor:
         self.canvas.bind("<Button-3>", self.show_magnifier)
 
         # pasek statusu pod obrazem
-        self.zoom_label = ttk.Label(self.left_frame, text="Zoom: 100%", font=("Segoe UI", 9))
-        self.zoom_label.pack(side=RIGHT, pady=5)
-        ttk.Label(self.left_frame,
+        self.image_tools = ttk.Frame(self.left_frame)
+        self.image_tools.pack(fill=X, pady=5)
+
+        # lewa strona paska (Instrukcja + Zoom info)
+        left_tools = ttk.Frame(self.image_tools)
+        left_tools.pack(side=LEFT)
+
+        self.zoom_label = ttk.Label(left_tools, text="Zoom: 100%", font=("Segoe UI", 9, "bold"))
+        self.zoom_label.pack(side=LEFT, pady=5)
+        ttk.Label(left_tools,
                   text="LPM: Przesuwanie | Scroll: Zoom | RPM: okno lupy",
-                  font=("Segoe UI", 8), bootstyle="secondary").pack(side=LEFT, pady=5)
+                  font=("Segoe UI", 8), bootstyle="secondary").pack(side=LEFT, pady=5, padx=10)
+
+        # prawa strona paska
+        tools_frame = ttk.Frame(self.image_tools)
+        tools_frame.pack(side=RIGHT)
+
+        ttk.Label(tools_frame, text="Filtry: ", font=("Segoe UI", 8)).pack(side=LEFT)
+        ttk.Button(tools_frame, text="Reset", command=lambda: self.apply_filter("normal"),
+                   bootstyle="outline-secondary", padding=2).pack(side=LEFT, padx=1)
+        ttk.Button(tools_frame, text="Kontrast", command=lambda: self.apply_filter("contrast"),
+                   bootstyle="outline-info", padding=2).pack(side=LEFT, padx=1)
+        ttk.Button(tools_frame, text="Negatyw", command=lambda: self.apply_filter("invert"),
+                   bootstyle="outline-dark", padding=2).pack(side=LEFT, padx=1)
 
         # prawy panel (na edytor transkrypcji)
         self.right_frame = ttk.Frame(self.paned)
@@ -223,6 +246,24 @@ class ManuscriptEditor:
         self.select_folder()
 
 
+    def apply_filter(self, mode):
+        """ zastosuj filtr dla bieżącego skanu """
+        if not self.original_image: return
+        self.active_filter = mode
+        img = self.original_image.copy()
+
+        if mode == "invert":
+            if img.mode != 'RGB': img = img.convert('RGB')
+            img = ImageOps.invert(img)
+        elif mode == "contrast":
+            enhancer = ImageEnhance.Contrast(img)
+            img = enhancer.enhance(2.0)
+            img = ImageEnhance.Sharpness(img).enhance(1.5)
+
+        self.processed_image = img
+        self.redraw_image()
+
+
     def load_config(self):
         """ wczytywanie ustawień z pliku JSON """
         config_path = Path('..') / 'config' / self.config_file
@@ -348,6 +389,7 @@ class ManuscriptEditor:
             if not self.file_pairs:
                 messagebox.showinfo("Info", "Brak skanów w folderze.", parent=self.root)
                 self.original_image = None
+                self.processed_image = None
                 self.canvas.delete("all")
                 self.text_area.delete(1.0, tk.END)
                 self.file_info_var.set("Brak plików")
@@ -371,6 +413,8 @@ class ManuscriptEditor:
         # skan
         try:
             self.original_image = Image.open(pair['img'])
+            self.processed_image = self.original_image.copy()
+            self.active_filter = "normal"
             self.scale = 1.0
             # skalowanie jeśli obraz jest bardzo duży
             if self.original_image.width > 1400:
@@ -397,11 +441,13 @@ class ManuscriptEditor:
 
     def redraw_image(self):
         """ odrysowywanie obrazu """
-        if not self.original_image:
+        source_img = self.processed_image if self.processed_image else self.original_image
+        if not source_img:
             return
-        w, h = int(self.original_image.width * self.scale), int(self.original_image.height * self.scale)
+
+        w, h = int(source_img.width * self.scale), int(source_img.height * self.scale)
         try:
-            resized = self.original_image.resize((w, h), Image.Resampling.BILINEAR)
+            resized = source_img.resize((w, h), Image.Resampling.BILINEAR)
             self.tk_image = ImageTk.PhotoImage(resized)
             self.canvas.delete("all")
             self.canvas.create_image(self.img_x, self.img_y, image=self.tk_image, anchor="nw")
@@ -648,7 +694,8 @@ class ManuscriptEditor:
 
     def show_magnifier(self, event):
         """ wyświetlanie lupę (okno powiększające) w miejscu kursora """
-        if not self.original_image:
+        src = self.processed_image if self.processed_image else self.original_image
+        if not src:
             return
 
         # ustawienia lupy
@@ -675,7 +722,7 @@ class ManuscriptEditor:
 
         try:
             # wycięcie i przeskalowanie
-            region = self.original_image.crop((x1, y1, x2, y2))
+            region = src.crop((x1, y1, x2, y2))
 
             # skalowanie do rozmiaru okna lupy
             magnified_img = region.resize((MAG_WIDTH, MAG_HEIGHT), Image.Resampling.BILINEAR)

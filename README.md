@@ -51,3 +51,7 @@ Reading a series of scans by the Gemini model:
 The file batch reading window displays all scan files in the directory. You can select which files Gemini will read. By default, those for which there is no text file with transcription yet, or only an empty file, are selected. Buttons at the bottom of the window allow you to select or deselect all scans and initiate the transcription process for the selected scans, during which a progress bar is displayed (processing multiple files can be time-consuming).
 
 **Note**: access to the Gemini Pro 3 model via API is subject to a fee, as per the Google pricing page.
+
+In some scans, manual reading of text can be facilitated by image filters, the following filters are available: negative and contrast (the screenshot below shows the negative filter used).
+
+![Screen](/doc/screen_scan_transcript_filtr.png)
