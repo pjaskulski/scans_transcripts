@@ -181,12 +181,6 @@ class ManuscriptEditor:
         self.lang_combobox.bind("<<ComboboxSelected>>", self.change_tts_language)
         self.lang_combobox.pack(side=LEFT, padx=2)
 
-        # self.btn_speak = ttk.Button(editor_tools, text="Czytaj", command=self.read_text_aloud, bootstyle="info-outline", padding=2)
-        # self.btn_speak.pack(side=LEFT, padx=2)
-
-        # self.btn_stop = ttk.Button(editor_tools, text="Stop", command=self.stop_reading, bootstyle="secondary-outline", padding=2, state="disabled")
-        # self.btn_stop.pack(side=LEFT, padx=2)
-
         # przycisk startu
         self.btn_speak = ttk.Button(editor_tools, text="▶", command=self.read_text_aloud,
                                     bootstyle="info-outline", width=3, padding=2)
@@ -1125,38 +1119,6 @@ class ManuscriptEditor:
         thread.start()
 
 
-    # def _single_worker(self, image_path):
-    #     """ wątek dla pojedynczego pliku """
-    #     try:
-    #         result_text = self._call_gemini_api(image_path)
-    #         self.root.after(0, self._single_finished, True, result_text)
-    #     except Exception as e:
-    #         self.root.after(0, self._single_finished, False, str(e))
-
-
-    # def _single_finished(self, success, content):
-    #     """ aktualizacja GUI po zakończeniu pracy wątku """
-    #     self.progress_bar.stop()
-    #     self.progress_bar.pack_forget()
-    #     self.is_transcribing = False
-    #     self.btn_ai.config(state="normal", text="Gemini")
-    #     self.text_area.config(state="normal")
-
-    #     if success:
-    #         self.text_area.delete(1.0, tk.END)
-    #         self.text_area.insert(tk.END, content)
-    #         self.save_current_text(False)
-    #         messagebox.showinfo("Sukces",
-    #                             "Transkrypcja zakończona pomyślnie.",
-    #                             parent=self.root)
-    #         self.root.focus_set()
-    #     else:
-    #         messagebox.showerror("Błąd transkrypcji",
-    #                              f"Info:\n{content}",
-    #                              parent=self.root)
-    #         self.root.focus_set()
-
-
     def _single_worker(self, image_path):
         """ wątek dla pojedynczego pliku z obsługą strumieniowania """
         try:
@@ -1193,7 +1155,7 @@ class ManuscriptEditor:
                 config=generate_content_config
             ):
                 if response.text:
-                    # Przekazanie fragmentu tekstu do aktualizacji UI
+                    # przekazanie fragmentu tekstu do aktualizacji UI
                     self.root.after(0, self._append_stream_text, response.text)
 
             self.root.after(0, self._single_finished, True, "")
