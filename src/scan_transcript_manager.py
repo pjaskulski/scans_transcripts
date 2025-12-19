@@ -28,8 +28,9 @@ class ManuscriptEditor:
 
         self.api_key = ""
         self.prompt_text = ""
-        self.prompt_filename_var = tk.StringVar(value="Brak promptu")
+        self.prompt_filename_var = tk.StringVar(value="Brak (wybierz plik)")
         self.current_folder_var = tk.StringVar(value="Nie wybrano katalogu")
+        self.current_prompt_path = None
 
         self._init_environment()
 
@@ -127,7 +128,7 @@ class ManuscriptEditor:
         ttk.Button(tools_frame, text="Kontrast", command=lambda: self.apply_filter("contrast"),
                    bootstyle="outline-info", padding=2).pack(side=LEFT, padx=1)
         ttk.Button(tools_frame, text="Negatyw", command=lambda: self.apply_filter("invert"),
-                   bootstyle="outline-dark", padding=2).pack(side=LEFT, padx=1)
+                   bootstyle="outline-dark", padding=2).pack(side=LEFT, padx=(1,5))
 
         # prawy panel (na edytor transkrypcji)
         self.right_frame = ttk.Frame(self.paned)
@@ -276,12 +277,22 @@ class ManuscriptEditor:
         self.prompt_status_frame = ttk.Frame(self.right_frame, bootstyle="light")
         self.prompt_status_frame.pack(fill=X, padx=(5,0), pady=(0, 5))
 
+        # etykieta z nazwą bieżącego promptu (pliku z promptem)
+        ttk.Label(self.prompt_status_frame, text="Prompt:",
+                  font=("Segoe UI", 8, "bold")).pack(side=LEFT)
+
         ttk.Label(self.prompt_status_frame, textvariable=self.prompt_filename_var,
-                  font=("Segoe UI", 8), bootstyle="dark").pack(side=LEFT, padx=5, pady=2)
+                  font=("Segoe UI", 8), bootstyle="dark").pack(side=LEFT, padx=(5,5), pady=2)
 
         # przycisk zmiany promptu
-        ttk.Button(self.prompt_status_frame, text="[ZMIEŃ PROMPT]", command=self.select_prompt_file,
+        ttk.Button(self.prompt_status_frame, text="[ZMIEŃ]", command=self.select_prompt_file,
                    bootstyle="link-secondary", cursor="hand2", padding=0).pack(side=RIGHT, padx=5)
+
+        # przycisk edycji promptu
+        self.btn_edit_prompt = ttk.Button(self.prompt_status_frame, text="[EDYTUJ]",
+                                        command=self.edit_current_prompt,
+                                        bootstyle="link-info", cursor="hand2", padding=0)
+        self.btn_edit_prompt.pack(side=RIGHT, padx=5)
 
         # skróty klawiszowe
         self.root.bind("<Control-s>", lambda e: self.save_current_text())
@@ -472,7 +483,7 @@ class ManuscriptEditor:
 
         self.api_key = os.environ.get("GEMINI_API_KEY")
 
-        self.prompt_filename_var.set("Prompt: Brak (wybierz plik)")
+        self.prompt_filename_var.set("Brak (wybierz plik)")
 
         default_prompt = "prompt_handwritten_pol_xx_century.txt"
         prompt_path = Path('..') / "prompt" / default_prompt
@@ -480,7 +491,8 @@ class ManuscriptEditor:
             try:
                 with open(prompt_path, 'r', encoding='utf-8') as f:
                     self.prompt_text = f.read()
-                self.prompt_filename_var.set(f"Prompt: {default_prompt}")
+                self.prompt_filename_var.set(f"{default_prompt}")
+                self.current_prompt_path = str(prompt_path)
             except Exception as e:
                 messagebox.showerror("Błąd", f"Nie można wczytać {default_prompt}: {e}", parent=self.root)
         else:
@@ -603,7 +615,8 @@ class ManuscriptEditor:
                 self.prompt_text = f.read()
 
             filename = os.path.basename(filepath)
-            self.prompt_filename_var.set(f"Prompt: {filename}")
+            self.prompt_filename_var.set(f"{filename}")
+            self.current_prompt_path = filepath
             return True
         except Exception as e:
             messagebox.showerror("Błąd promptu", f"Nie można wczytać pliku:\n{e}", parent=self.root)
@@ -1093,7 +1106,7 @@ class ManuscriptEditor:
 
         if not self.prompt_text:
             messagebox.showerror("Błąd konfiguracji",
-                                 "Brak pliku prompt.txt",
+                                 "Brak promptu.",
                                  parent=self.root)
             return
 
@@ -1191,6 +1204,92 @@ class ManuscriptEditor:
                                  f"Info:\n{content}",
                                  parent=self.root)
             self.root.focus_set()
+
+
+    def edit_current_prompt(self):
+        """ Otwiera okno edycji aktualnego promptu """
+        if not self.current_prompt_path or not os.path.exists(self.current_prompt_path):
+            messagebox.showwarning("Brak pliku promptu", "Przed edycją należy wybrać plik promptu.", parent=self.root)
+            return
+
+        # okno edytora
+        edit_win = tk.Toplevel(self.root)
+        edit_win.title(f"Edycja: {os.path.basename(self.current_prompt_path)}")
+        edit_win.geometry("850x600")
+        edit_win.transient(self.root)
+
+        # panel na przyciski
+        btn_frame = ttk.Frame(edit_win)
+        btn_frame.pack(side=BOTTOM, fill=X, pady=15)
+
+        def save_prompt_changes():
+            """ zapis zmodyfikowanego promptu na dysku """
+            new_content = txt_edit.get(1.0, tk.END).strip()
+            if not new_content:
+                messagebox.showwarning("Błąd", "Prompt nie może być pusty.", parent=edit_win)
+                return
+
+            try:
+                with open(self.current_prompt_path, 'w', encoding='utf-8') as f:
+                    f.write(new_content)
+                self.prompt_text = new_content
+                messagebox.showinfo("Zapisano", "Zmiany w prompcie zostały zapisane.", parent=edit_win)
+                edit_win.destroy()
+            except Exception as e:
+                messagebox.showerror("Błąd zapisu", str(e), parent=edit_win)
+
+        def restore_from_file():
+            """ przywrócenie pierwotnej wersji promptu z pliku """
+            if messagebox.askyesno("Potwierdzenie",
+                                   "Wczytać treść promptu z pliku i zastąpić bieżącą zawartość edytora?",
+                                   parent=edit_win):
+                try:
+                    with open(self.current_prompt_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    txt_edit.delete(1.0, tk.END)
+                    txt_edit.insert(tk.END, content)
+                except Exception as e:
+                    messagebox.showerror("Błąd", f"Nie udało się wczytać pliku: {e}", parent=edit_win)
+
+        def on_close_prompt_edit():
+            """ funkcja sprawdzająca zmiany przy zamykaniu okna """
+            current_content = txt_edit.get(1.0, tk.END).strip()
+            # porównanie z tekstem zapisanym w pamięci aplikacji
+            if current_content != self.prompt_text.strip():
+                if messagebox.askyesno("Niezapisane zmiany",
+                                       "Wprowadzone zmiany nie zostały zapisane. Czy na pewno chcesz zamknąć okno i utracić zmiany?",
+                                       parent=edit_win):
+                    edit_win.destroy()
+            else:
+                edit_win.destroy()
+
+        edit_win.protocol("WM_DELETE_WINDOW", on_close_prompt_edit)
+
+        # przycisk zapisu
+        btn_save = ttk.Button(btn_frame, text="Zapisz", command=save_prompt_changes, bootstyle="success")
+        btn_save.pack(side=RIGHT, padx=20)
+
+        # przycisk przywracania z dysku
+        btn_restore = ttk.Button(btn_frame, text="Przywróć z pliku",
+                                 command=restore_from_file, bootstyle="outline-secondary")
+        btn_restore.pack(side=LEFT, padx=20)
+
+        text_container = ttk.Frame(edit_win)
+        text_container.pack(fill=BOTH, expand=True, padx=15, pady=(15, 0))
+
+        scrollbar = ttk.Scrollbar(text_container, orient=VERTICAL)
+        scrollbar.pack(side=RIGHT, fill=Y)
+
+        # pole tekstowe
+        txt_edit = tk.Text(text_container, font=("Consolas", 11), wrap=WORD, undo=True, yscrollcommand=scrollbar.set)
+        txt_edit.insert(tk.END, self.prompt_text)
+        txt_edit.pack(side=LEFT, fill=BOTH, expand=True)
+
+        scrollbar.config(command=txt_edit.yview)
+
+        txt_edit.focus_set()
+
+
 
 
 # ----------------------------------- MAIN -------------------------------------

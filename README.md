@@ -4,12 +4,12 @@ A simple scan and transcription viewer with the option of reading scans using th
 
 Application Features:
   - Viewing scans and transcripts. The application assumes that the specified directory contains scan files and transcript files with identical names but with the *.txt extension. If a text file is missing, the application will automatically create an empty one.
-  - Creating transcripts using the LLM model (Gemini Pro 3) for the current scan or scan series. For scan series, the application displays all scans in the viewed directory and selects those that do not yet have a txt transcript file or that have an empty transcript file. This selection can, of course, be changed.
+  - Creating transcripts using the LLM model (Gemini Pro 3, requires internet access) for the current scan or scan series. For scan series, the application displays all scans in the viewed directory and selects those that do not yet have a txt transcript file or that have an empty transcript file. This selection can, of course, be changed.
   - Transcription files are automatically saved when moving to the next/previous file; you can also force saving by pressing the SAVE button.
   - Transcriptions can be saved in a bulk txt file or in a docx file. For docx files, the application also concatenates broken words and lines into paragraphs. 
   - To facilitate verification of transcription accuracy, the application allows you to pan the scan (left mouse button), zoom in/out (mouse scroll wheel), and display a magnifying glass window at a selected location (right mouse button). 
   - Simple filters can be applied to scans: contrast enhancement and image inversion.
-  - A feature that aids verification is the ability to read the transcript aloud (this feature requires internet access).
+  - A feature that aids verification is the ability to read the transcript aloud (TTS reader), this feature requires internet access.
   - Ability to adjust the font size in the transcription field.
 
 
@@ -60,6 +60,10 @@ Reading a series of scans by the Gemini model:
 ![Screen](/doc/screen_scan_transcript_seria.png)
 
 The file batch reading window displays all scan files in the directory. You can select which files Gemini will read. By default, those for which there is no text file with transcription yet, or only an empty file, are selected. Buttons at the bottom of the window allow you to select or deselect all scans and initiate the transcription process for the selected scans, during which a progress bar is displayed (processing multiple files can be time-consuming).
+
+Example of a typescript transcription:
+
+![Screen](/doc/typescript_example.jpg)
 
 **Note**: access to the Gemini Pro 3 model via API is subject to a fee, as per the Google pricing page.
 
