@@ -87,7 +87,7 @@ The Gemini model was involved in the application programming :-)
 Project carried out at the Digital History Lab of the Institute of History of the Polish Academy of Sciences [https://ai.ihpan.edu.pl](https://ai.ihpan.edu.pl).
 
 **Note 2**: A similar but more advanced transcription application (also using Python and TKinter!) is 
-[Transcription Pearl](https://github.com/mhumphries2323/Transcription_Pearl) (Mark Humphries and Lianne C. Leddy, 2024. Transcription Pearl 1.0 Beta. Department of History: Wilfrid Laurier University.) – it allows you to use various models from OpenAI, Google, and Anthropic, import images from PDF files, etc.
+[Transcription Pearl](https://github.com/mhumphries2323/Transcription_Pearl) (Mark Humphries and Lianne C. Leddy, 2024. Transcription Pearl 1.0 Beta. Department of History: Wilfrid Laurier University.) – it allows you to use various models from OpenAI, Google, and Anthropic, import images from PDF files, etc. The same authors have another application: [ArchiveStudio](https://github.com/mhumphries2323/Archive_Studio), which is designed for the Windows system.
 
 
 ## Installation
