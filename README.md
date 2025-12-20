@@ -11,6 +11,7 @@ Application Features:
   - Simple filters can be applied to scans: contrast enhancement and image inversion.
   - A feature that aids verification is the ability to read the transcript aloud (TTS reader), this feature requires internet access.
   - Ability to adjust the font size in the transcription field.
+  - Due to the fact that transcription errors quite often appear in proper names (people, places, institutions), the option to highlight such words (NER button) has been added so that special attention can be paid to them during transcription verification.
 
 
 ## Screenshots and description:
@@ -68,6 +69,10 @@ Example of a typescript transcription:
 Prompt editor:
 
 ![Screen](/doc/prompt_editor.jpg)
+
+Highlighting of entity names in the transcription text:
+
+![Screen](/doc/highlighting_entity_names.jpg)
 
 **Note**: access to the Gemini Pro 3 model via API is subject to a fee, as per the Google pricing page.
 

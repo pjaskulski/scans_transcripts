@@ -169,6 +169,11 @@ class ManuscriptEditor:
         editor_tools = ttk.Frame(self.editor_header)
         editor_tools.pack(side=RIGHT)
 
+        # przycisk NER (podświetlanie nazw własnych)
+        self.btn_ner = ttk.Button(editor_tools, text="NER", command=self.start_ner_analysis,
+                                  bootstyle="success-outline", width=3, padding=2)
+        self.btn_ner.pack(side=LEFT, padx=(3,3))
+
         # wybór języka (Combobox)
         self.lang_combobox = ttk.Combobox(editor_tools, values=list(self.tts_languages.keys()), state="readonly", width=10, bootstyle="info")
 
@@ -216,6 +221,12 @@ class ManuscriptEditor:
         self.text_scroll.config(command=self.text_area.yview)
         self.text_scroll.pack(side=RIGHT, fill=Y)
         self.text_area.pack(side=LEFT, fill=BOTH, expand=True, padx=5, pady=5)
+
+        # konfiguracja stylu podświetlenia dla NER (żółte tło)
+        self.text_area.tag_configure("entity_highlight", background="#ffcc00", foreground="black")
+
+        # powiązanie dowolnego klawisza z usunięciem podświetleń
+        #self.text_area.bind("<KeyPress>", self._on_text_modified)
 
         # pasek narzędzi
         self.toolbar = ttk.Frame(self.right_frame, padding=(0, 10, 0, 5))
@@ -308,6 +319,80 @@ class ManuscriptEditor:
 
         self.select_folder()
 
+
+    def _on_text_modified(self, event):
+        """
+        automatyczne usuwanie podświetlenia nazw własnych przy edycji tekstu
+        """
+        # usuwanie tagów tylko jeśli faktycznie istnieją w edytorze
+        if self.text_area.tag_ranges("entity_highlight"):
+            self.text_area.tag_remove("entity_highlight", "1.0", tk.END)
+
+    def start_ner_analysis(self):
+        """
+        inicjacja procesu ekstrakcji nazw własnych w osobnym wątku
+        """
+        text = self.text_area.get(1.0, tk.END).strip()
+        if not text or self.is_transcribing:
+            return
+
+        self.btn_ner.config(state="disabled")
+        self.text_area.tag_remove("entity_highlight", "1.0", tk.END)
+
+        # wykorzystanie wątku zapobiega zawieszeniu interfejsu
+        thread = threading.Thread(target=self._ner_worker, args=(text,), daemon=True)
+        thread.start()
+
+    def _ner_worker(self, text):
+        """
+        dodatkowa analiza tekstu przez Gemini w celu uzyskania listy nazw własnych
+        """
+        try:
+            client = genai.Client(api_key=self.api_key)
+
+            prompt = (
+                "Z poniższego tekstu wypisz wyłącznie nazwy własne (osoby, miejscowości, instytucje). "
+                "Zwróć je jako listę słów oddzielonych przecinkami, bez żadnego dodatkowego komentarza, "
+                "w takiej formie w jakiej występują w tekście. "
+                "Tekst: " + text
+            )
+
+            config = types.GenerateContentConfig(
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
+            )
+
+            response = client.models.generate_content(
+                model="gemini-flash-latest", # gemini-flash-lite-latest lub gemini-flash-latest
+                contents=prompt,
+                config=config
+            )
+
+            if response.text:
+                # przekształcenie odpowiedzi na listę unikalnych fraz
+                entities = [e.strip() for e in response.text.split(",") if len(e.strip()) > 2]
+                self.root.after(0, self._apply_ner_highlights, entities)
+
+        except Exception as e:
+            print(f"Błąd NER: {e}")
+        finally:
+            self.root.after(0, lambda: self.btn_ner.config(state="normal"))
+
+    def _apply_ner_highlights(self, entities):
+        """
+        podświetlenie nazw własnych w tekście w edytorze
+        """
+        for entity in entities:
+            start_pos = "1.0"
+            while True:
+                # wyszukiwanie frazy bez względu na wielkość liter
+                start_pos = self.text_area.search(entity, start_pos, stopindex=tk.END, nocase=True)
+                if not start_pos:
+                    break
+
+                # obliczanie zakresu i nakładanie tagu
+                end_pos = f"{start_pos}+{len(entity)}c"
+                self.text_area.tag_add("entity_highlight", start_pos, end_pos)
+                start_pos = end_pos
 
     def change_tts_language(self, event):
         """ zmienia język TTS na podstawie wyboru z listy """
@@ -1087,7 +1172,8 @@ class ManuscriptEditor:
         generate_content_config = types.GenerateContentConfig(
             temperature=0,
             thinkingConfig=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW),
-            media_resolution=types.MediaResolution.MEDIA_RESOLUTION_HIGH
+            media_resolution=types.MediaResolution.MEDIA_RESOLUTION_HIGH,
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
         )
 
         response = client.models.generate_content(
@@ -1155,7 +1241,8 @@ class ManuscriptEditor:
             generate_content_config = types.GenerateContentConfig(
                 temperature=0,
                 thinkingConfig=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW),
-                media_resolution=types.MediaResolution.MEDIA_RESOLUTION_HIGH
+                media_resolution=types.MediaResolution.MEDIA_RESOLUTION_HIGH,
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
             )
 
             # czyszczenie pola tekstowego przed startem strumienia (w wątku głównym)
@@ -1288,8 +1375,6 @@ class ManuscriptEditor:
         scrollbar.config(command=txt_edit.yview)
 
         txt_edit.focus_set()
-
-
 
 
 # ----------------------------------- MAIN -------------------------------------
