@@ -76,7 +76,7 @@ Highlighting of entity names in the transcription text:
 
 ![Screen](/doc/highlighting_entity_names.jpg)
 
-Experimental function of searching for found entity names in the scan - the names are marked with frames and the read text is placed above the frame, which allows for a quick comparison of the text with the actual content of the scan.
+BOX - experimental function for marking entity names in the scan. The names are marked with frames, and the name read by the model is placed above the frame (on yellow background). This allows you to quickly compare the name with the actual content of the scan. See the screenshot below.
 
 ![Screen](/doc/entity_names_on_scan.jpg)
 
