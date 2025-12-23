@@ -114,6 +114,9 @@ class ManuscriptEditor:
         self.mag_label = None
         self.tk_mag_img = None
 
+        self.dragging_box_tag = None
+        self.box_to_data_map = {}  # mapowanie ramek na skanie
+
         # pasek statusu pod obrazem
         self.image_tools = ttk.Frame(self.left_frame)
         self.image_tools.pack(fill=X, pady=5)
@@ -255,9 +258,15 @@ class ManuscriptEditor:
         self.text_area.pack(side=LEFT, fill=BOTH, expand=True, padx=5, pady=5)
 
         # konfiguracja kolorów dla różnych rodzajów nazw własnych (NER)
-        self.text_area.tag_configure("PERS", background="#ffcc00", foreground="black")
-        self.text_area.tag_configure("LOC", background="#C1FFC1", foreground="black")
-        self.text_area.tag_configure("ORG", background="#D1EAFF", foreground="black")
+        self.category_colors = {
+            "PERS": "#f4d65f",  # Jasny różowy (Osoby)
+            "LOC": "#C1FFC1",   # Jasny zielony (Miejsca)
+            "ORG": "#D1EAFF"    # Jasny niebieski (Organizacje)
+        }
+
+        # konfiguracja kolorów tagów w edytorze na podstawie słownika
+        for category, color in self.category_colors.items():
+            self.text_area.tag_configure(category, background=color, foreground="black")
 
         # konfiguracja dla wyszukiwania w tekście transkrypcji
         self.text_area.tag_configure("search_highlight", background="#00ffff", foreground="black")
@@ -496,7 +505,7 @@ class ManuscriptEditor:
             )
 
             response = client.models.generate_content(
-                model="gemini-flash-latest",
+                model="gemini-flash-latest", # lub gemini-3-flash-preview
                 contents=prompt + "\nTekst: " + text,
                 config=config
             )
@@ -662,31 +671,166 @@ class ManuscriptEditor:
     def _draw_boxes_only(self, entities_data):
         """ rysowanie ramki na canvasie """
         self.canvas.delete("ner_box")
+        self.box_to_data_map = {}
         orig_w, orig_h = self.original_image.width, self.original_image.height
 
-        for item in entities_data:
+        for i, item in enumerate(entities_data):
             name = item['name']
             c = item['coords']
+
+            bg_color = "#ffea00"
+            line_color = "#ff0000"
+
             x1 = (c[1] * orig_w / 1000) * self.scale + self.img_x
             y1 = (c[0] * orig_h / 1000) * self.scale + self.img_y
             x2 = (c[3] * orig_w / 1000) * self.scale + self.img_x
             y2 = (c[2] * orig_h / 1000) * self.scale + self.img_y
-            self.canvas.create_rectangle(x1, y1, x2, y2, outline="#f90404", width=3, tags="ner_box")
 
-            # etykieta tekstowa nad ramką
-            # tworzenie tekstu, aby pobrać jego wymiary do tła
-            text_id = self.canvas.create_text(x1, y1 - 2, text=name, anchor="sw",
+            entity_tag = f"box_{i}"
+
+            self.canvas.create_rectangle(x1, y1, x2, y2, outline=line_color, width=3,
+                                                 fill=line_color, stipple="gray12", # lekkie zakropkowanie środka
+                                                 tags=("ner_box", entity_tag))
+
+            text_id = self.canvas.create_text(x1, y1 - 2, text=f"{name}", anchor="sw",
                                              fill="black", font=("Segoe UI", 9, "bold"),
-                                             tags="ner_box")
+                                             tags=("ner_box", entity_tag))
 
-            # bounding box stworzonego tekstu
             bbox = self.canvas.bbox(text_id)
+            bg_id = self.canvas.create_rectangle(bbox, fill=bg_color, outline=line_color,
+                                                tags=("ner_box", entity_tag))
+            self.canvas.tag_raise(text_id, bg_id)
 
-            # rysowanie tła pod tekst
-            rect_id = self.canvas.create_rectangle(bbox, fill="#ffcc00", outline="#ffcc00", tags="ner_box")
+            self.canvas.tag_bind(entity_tag, "<ButtonPress-1>",
+                                 lambda e, t=entity_tag: self._on_box_press(e, t))
+            self.canvas.tag_bind(entity_tag, "<B1-Motion>", self._on_box_drag)
+            self.canvas.tag_bind(entity_tag, "<ButtonRelease-1>", self._on_box_release)
 
-            # tekst na prostokącie tła
-            self.canvas.tag_raise(text_id, rect_id)
+            self.box_to_data_map[entity_tag] = i
+
+
+    def _on_box_press(self, event, entity_tag):
+        """ inicjowanie przesuwania konkretnej grupy (ramka + etykieta) """
+        self.dragging_box_tag = entity_tag
+        self.last_mouse_x = event.x
+        self.last_mouse_y = event.y
+        return "break" # zapobiega przesuwaniu całego skanu pod spodem
+
+
+    def _on_box_drag(self, event):
+        """ przesuwanie grupy z danym tagiem na ekranie """
+        if not hasattr(self, 'dragging_box_tag') or self.dragging_box_tag is None:
+            return
+
+        dx = event.x - self.last_mouse_x
+        dy = event.y - self.last_mouse_y
+
+        # wszystkie obiekty o tym tagu (ramkę, tło i tekst)
+        self.canvas.move(self.dragging_box_tag, dx, dy)
+
+        self.last_mouse_x = event.x
+        self.last_mouse_y = event.y
+        return "break"
+
+
+    def _on_box_release(self, event):
+        """ zapis nowych współrzędnych do pliku JSON po puszczeniu myszy """
+        if not hasattr(self, 'dragging_box_tag') or self.dragging_box_tag is None:
+            return
+
+        # odczytanie aktualnych współrzędnych ramki na ekranie (x1, y1, x2, y2)
+        items = self.canvas.find_withtag(self.dragging_box_tag)
+        rect_id = None
+        for item in items:
+            if self.canvas.type(item) == "rectangle" and "ner_box" in self.canvas.gettags(item):
+                # sprawdzenie czy to nie jest tło etykiety
+                coords = self.canvas.coords(item)
+                if abs(coords[2] - coords[0]) > 5:
+                    rect_id = item
+                    break
+
+        if rect_id:
+            # odczytanie aktualnych współrzędnych ramki na ekranie (x1, y1, x2, y2)
+            coords = self.canvas.coords(rect_id)
+
+            # przeliczanie współrzędnych ekranowych na skalę wg Gemini (0-1000)
+            orig_w = self.original_image.width
+            orig_h = self.original_image.height
+
+            x1_model = int(((coords[0] - self.img_x) / self.scale) * 1000 / orig_w)
+            y1_model = int(((coords[1] - self.img_y) / self.scale) * 1000 / orig_h)
+            x2_model = int(((coords[2] - self.img_x) / self.scale) * 1000 / orig_w)
+            y2_model = int(((coords[3] - self.img_y) / self.scale) * 1000 / orig_h)
+
+            # aktualizacja metadanych w pamięci i zapis do pliku JSON
+            json_path = self._get_ner_json_path()
+            if os.path.exists(json_path):
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    cache_data = json.load(f)
+
+                idx = self.box_to_data_map[self.dragging_box_tag]
+                cache_data["coordinates"][idx]["coords"] = [y1_model, x1_model, y2_model, x2_model]
+
+                with open(json_path, 'w', encoding='utf-8') as f:
+                    json.dump(cache_data, f, ensure_ascii=False, indent=4)
+
+        self.dragging_box_tag = None
+
+
+    # def _on_box_press(self, event, rect_id):
+    #     """ inicjowanie przesuwania konkretnej ramki """
+    #     self.dragging_box_id = rect_id
+    #     self.last_mouse_x = event.x
+    #     self.last_mouse_y = event.y
+    #     return "break" # zapobiega przesuwaniu całego skanu pod spodem
+
+
+    # def _on_box_drag(self, event):
+    #     """ przesuwanie ramki na ekranie """
+    #     if self.dragging_box_id is None:
+    #         return
+
+    #     dx = event.x - self.last_mouse_x
+    #     dy = event.y - self.last_mouse_y
+
+    #     # przesuwanie jedynie wybranej ramki na canvasie
+    #     self.canvas.move(self.dragging_box_id, dx, dy)
+
+    #     self.last_mouse_x = event.x
+    #     self.last_mouse_y = event.y
+    #     return "break"
+
+
+    # def _on_box_release(self, event):
+    #     """ zapis nowych współrzędnych do pliku JSON po puszczeniu myszy """
+    #     if self.dragging_box_id is None:
+    #         return
+
+    #     # odczytanie aktualnych współrzędnych ramki na ekranie (x1, y1, x2, y2)
+    #     coords = self.canvas.coords(self.dragging_box_id)
+
+    #     # przeliczanie współrzędnych ekranowych na skalę wg Gemini (0-1000)
+    #     orig_w = self.original_image.width
+    #     orig_h = self.original_image.height
+
+    #     x1_model = int(((coords[0] - self.img_x) / self.scale) * 1000 / orig_w)
+    #     y1_model = int(((coords[1] - self.img_y) / self.scale) * 1000 / orig_h)
+    #     x2_model = int(((coords[2] - self.img_x) / self.scale) * 1000 / orig_w)
+    #     y2_model = int(((coords[3] - self.img_y) / self.scale) * 1000 / orig_h)
+
+    #     # aktualizacja metadanych w pamięci i zapis do pliku JSON
+    #     json_path = self._get_ner_json_path()
+    #     if os.path.exists(json_path):
+    #         with open(json_path, 'r', encoding='utf-8') as f:
+    #             cache_data = json.load(f)
+
+    #         idx = self.box_to_data_map[self.dragging_box_id]
+    #         cache_data["coordinates"][idx]["coords"] = [y1_model, x1_model, y2_model, x2_model]
+
+    #         with open(json_path, 'w', encoding='utf-8') as f:
+    #             json.dump(cache_data, f, ensure_ascii=False, indent=4)
+
+    #     self.dragging_box_id = None
 
 
     def change_tts_language(self, event):
