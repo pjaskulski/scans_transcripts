@@ -208,7 +208,7 @@ class ManuscriptEditor:
                                   bootstyle="success-outline", width=3, padding=2)
         self.btn_ner.pack(side=LEFT, padx=2)
 
-        self.btn_box = ttk.Button(ai_tools, text="BOX", command=self.start_grounding_analysis,
+        self.btn_box = ttk.Button(ai_tools, text="BOX", command=self.start_coordinates_analysis,
                                   bootstyle="success-outline", width=4, padding=2, state="disabled")
         self.btn_box.pack(side=LEFT, padx=2)
 
@@ -408,17 +408,17 @@ class ManuscriptEditor:
             self.root.after(500, lambda: self.search_entry.config(bootstyle="default"))
 
 
-    def _parse_grounding_response(self, text):
+    def _parse_coordinates_response(self, text):
         """ wyodrębnia nazwy i współrzędne [y1, x1, y2, x2] z odpowiedzi modelu """
         results = []
-        # Szukamy wzorca: [nazwa] [ymin, xmin, ymax, xmax]
+        # wyszukiwanie wzorca: [nazwa] [ymin, xmin, ymax, xmax]
         pattern = r"(.*?)\s*\[(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\]"
         matches = re.findall(pattern, text)
 
         for m in matches:
             results.append({
                 'name': m[0],
-                'coords': [int(x) for x in m[1:]] # konwersja na integer
+                'coords': [int(x) for x in m[1:]]
             })
         return results
 
@@ -459,13 +459,13 @@ class ManuscriptEditor:
                     self.text_area.tag_remove("LOC", "1.0", tk.END)
                     self.text_area.tag_remove("ORG", "1.0", tk.END)
                     self._apply_ner_categories(self.last_entities)
+                    self.btn_ner.config(state="normal")
                     return
 
             except Exception as e:
                 print(f"Błąd wczytania metadanych NER: {e}")
 
         # wywołanie AI jeżeli brak pliku json z metadanymi
-        self.btn_ner.config(state="disabled")
         # suma kontrolna przekazywana do wątku, w celu zapisu w json po analizie AI
         thread = threading.Thread(target=self._ner_worker,
                                   args=(text, current_checksum), daemon=True)
@@ -512,15 +512,29 @@ class ManuscriptEditor:
             self.root.after(0, lambda: self.btn_ner.config(state="normal"))
 
 
-    def _save_ner_cache(self, entities, checksum):
-        """ zapis wyników NER i sumy kontrolnej do pliku .json """
+    def _save_ner_cache(self, entities=None, coordinates=None, checksum=None):
+        """ zapis wyników NER, współrzędnych i sumy kontrolnej do pliku .json """
         json_path = self._get_ner_json_path()
-        if not json_path: return
+        if not json_path:
+            return
 
-        cache_data = {
-            "checksum": checksum,
-            "entities": entities
-        }
+        # jeśli plik istnieje jest wczytywany, aby nie stracić danych
+        cache_data = {}
+        if os.path.exists(json_path):
+            try:
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    cache_data = json.load(f)
+            except Exception as e:
+                print(e)
+
+        # aktualizacja pól, które zostały przekazane
+        if checksum:
+            cache_data["checksum"] = checksum
+        if entities:
+            cache_data["entities"] = entities
+        if coordinates:
+            cache_data["coordinates"] = coordinates
+
         try:
             with open(json_path, 'w', encoding='utf-8') as f:
                 json.dump(cache_data, f, ensure_ascii=False, indent=4)
@@ -567,32 +581,35 @@ class ManuscriptEditor:
             self.btn_box.config(state="normal")
 
 
-    def _apply_ner_txt_only(self):
-        """ podświetlenie nazw własnych w tekście w edytorze """
-        for name in self.last_entities:
-            start_pos = "1.0"
-            while True:
-                start_pos = self.text_area.search(name, start_pos, stopindex=tk.END, nocase=True)
-                if not start_pos:
-                    break
-                end_pos = f"{start_pos}+{len(name)}c"
-                self.text_area.tag_add("entity_highlight", start_pos, end_pos)
-                start_pos = end_pos
-
-        if self.last_entities:
-            self.btn_box.config(state="normal") # odblokowanie rysowania ramek na skanie
-
-
-    def start_grounding_analysis(self):
+    def start_coordinates_analysis(self):
         """ uruchamianie rysowania lokalizacji nazw na obrazie """
         if not self.last_entities or not self.original_image:
             return
 
+        text = self.text_area.get(1.0, tk.END).strip()
+        current_checksum = self._calculate_checksum(text)
+        json_path = self._get_ner_json_path()
+
+        # odczytywanie metadanych z pliku json
+        if json_path and os.path.exists(json_path):
+            try:
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    cache_data = json.load(f)
+
+                # jeśli suma kontrolna się zgadza i istnieją metadane
+                if cache_data.get("checksum") == current_checksum and "coordinates" in cache_data:
+                    self._draw_boxes_only(cache_data["coordinates"])
+                    return
+
+            except Exception as e:
+                print(e)
+
+        # brak metadanych - wywołanie AI
         self.btn_box.config(state="disabled", text="..." )
-        threading.Thread(target=self._box_worker, daemon=True).start()
+        threading.Thread(target=self._box_worker, args=(current_checksum,), daemon=True).start()
 
 
-    def _box_worker(self):
+    def _box_worker(self, checksum):
         try:
             client = genai.Client(api_key=self.api_key)
             current_pair = self.file_pairs[self.current_index]
@@ -625,8 +642,12 @@ class ManuscriptEditor:
             )
 
             if response.text:
-                entities_data = self._parse_grounding_response(response.text)
-                self.root.after(0, self._draw_boxes_only, entities_data)
+                coordinates_data = self._parse_coordinates_response(response.text)
+
+                # zapis współrzędnych ramek do pliku JSON z metadanymi
+                self._save_ner_cache(entities=None, coordinates=coordinates_data, checksum=checksum)
+
+                self.root.after(0, self._draw_boxes_only, coordinates_data)
 
         except Exception as e:
             print(f"Błąd BOX: {e}")
