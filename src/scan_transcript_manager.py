@@ -116,6 +116,16 @@ class ManuscriptEditor:
 
         self.dragging_box_tag = None
         self.box_to_data_map = {}  # mapowanie ramek na skanie
+        self.resizing_box_tag = None
+
+        self.cursor_resizing = "bottom_right_corner"
+        self.cursor_move = "fleur"
+        if os.name == 'nt': # Windows
+            self.cursor_resizing = "sizenwse"
+            self.cursor_move = "fleur"
+
+        self.active_box_tag = None
+        self.box_action = None
 
         # pasek statusu pod obrazem
         self.image_tools = ttk.Frame(self.left_frame)
@@ -688,45 +698,104 @@ class ManuscriptEditor:
 
             entity_tag = f"box_{i}"
 
+            # główna ramka - tag "main_rect"
             self.canvas.create_rectangle(x1, y1, x2, y2, outline=line_color, width=3,
-                                                 fill=line_color, stipple="gray12", # lekkie zakropkowanie środka
-                                                 tags=("ner_box", entity_tag))
+                                         fill=line_color, stipple="gray12",
+                                         tags=("ner_box", entity_tag, "main_rect"))
 
+            # tekst etykiety ramki
             text_id = self.canvas.create_text(x1, y1 - 2, text=f"{name}", anchor="sw",
                                              fill="black", font=("Segoe UI", 9, "bold"),
-                                             tags=("ner_box", entity_tag))
+                                             tags=("ner_box", entity_tag, "label_text"))
 
+            # tło etykiety ramki - tag "label_bg"
             bbox = self.canvas.bbox(text_id)
             bg_id = self.canvas.create_rectangle(bbox, fill=bg_color, outline=line_color,
-                                                tags=("ner_box", entity_tag))
+                                                tags=("ner_box", entity_tag, "label_bg"))
             self.canvas.tag_raise(text_id, bg_id)
 
-            self.canvas.tag_bind(entity_tag, "<ButtonPress-1>",
-                                 lambda e, t=entity_tag: self._on_box_press(e, t))
+            # uchwyt ramki
+            h_size = 4
+            self.canvas.create_rectangle(x2 - h_size, y2 - h_size, x2 + h_size, y2 + h_size,
+                                         fill="white", outline=line_color, width=1,
+                                         tags=("ner_box", entity_tag, "resize_handle"))
+
+            # przypisanie przycików i klawiszy
+            self.canvas.tag_bind(entity_tag, "<Button-1>", lambda e, t=entity_tag: self._on_box_press(e, t))
             self.canvas.tag_bind(entity_tag, "<B1-Motion>", self._on_box_drag)
             self.canvas.tag_bind(entity_tag, "<ButtonRelease-1>", self._on_box_release)
+            self.canvas.tag_bind(entity_tag, "<Control-Button-1>", lambda e, t=entity_tag: self._on_box_delete(e, t))
+            self.canvas.tag_bind(entity_tag, "<Motion>", lambda e, t=entity_tag: self._on_box_hover(e, t))
 
             self.box_to_data_map[entity_tag] = i
 
 
-    def _on_box_press(self, event, entity_tag):
-        """ inicjowanie przesuwania konkretnej grupy (ramka + etykieta) """
-        self.dragging_box_tag = entity_tag
+    def _on_box_hover(self, event, entity_tag):
+        """ weryfikacja czy kursor jest nad uchwytem lub ramką """
+        # pobieranie ID obiektu bezpośrednio pod myszą
+        item_under_mouse = self.canvas.find_closest(event.x, event.y)[0]
+        tags = self.canvas.gettags(item_under_mouse)
+
+        if "resize_handle" in tags:
+            self.canvas.config(cursor=self.cursor_resizing)
+        else:
+            self.canvas.config(cursor=self.cursor_move)
+        return "break"
+
+
+    def _on_box_resize_start(self, event, entity_tag):
+        """ inicjacja zmiany rozmiaru i blokada ruchu obrazu """
+        self.resizing_box_tag = entity_tag
         self.last_mouse_x = event.x
         self.last_mouse_y = event.y
-        return "break" # zapobiega przesuwaniu całego skanu pod spodem
+        # kursor zmiany rozmiaru
+        self.canvas.config(cursor=self.cursor_resizing)
+        return "break" # blokowanie przesuwanie skanu
 
 
     def _on_box_drag(self, event):
-        """ przesuwanie grupy z danym tagiem na ekranie """
-        if not hasattr(self, 'dragging_box_tag') or self.dragging_box_tag is None:
+        """ wykonuje przesuwanie lub zmianę rozmiaru zależnie od box_action """
+        if not hasattr(self, 'active_box_tag') or self.active_box_tag is None:
             return
 
         dx = event.x - self.last_mouse_x
         dy = event.y - self.last_mouse_y
 
-        # wszystkie obiekty o tym tagu (ramkę, tło i tekst)
-        self.canvas.move(self.dragging_box_tag, dx, dy)
+        # wszystkie elementy należące do tej konkretnej nazwy własnej
+        items = self.canvas.find_withtag(self.active_box_tag)
+
+        rect_id = None
+        handle_id = None
+
+        # szukanie konkretnie po tagach nadanych w _draw_boxes_only
+        for item in items:
+            tags = self.canvas.gettags(item)
+            if "resize_handle" in tags:
+                handle_id = item
+            elif "main_rect" in tags:  # by nie "złapać" żółtego tła etykiety
+                rect_id = item
+
+        if self.box_action == "move":
+            # przesuwanie - całą grupą (ramka, etykieta, uchwyt)
+            self.canvas.move(self.active_box_tag, dx, dy)
+
+        elif self.box_action == "resize" and rect_id and handle_id:
+            # zmiana rozmiaru: aktualizacja dolnego prawego rogu głównej ramki
+            coords = self.canvas.coords(rect_id) # [x1, y1, x2, y2]
+
+            # nowe współrzędne (minimalna wielkość 10x10)
+            new_x2 = max(coords[0] + 10, event.x)
+            new_y2 = max(coords[1] + 10, event.y)
+
+            # zmiana rozmiaru głównej ramki (czerwonej)
+            self.canvas.coords(rect_id, coords[0], coords[1], new_x2, new_y2)
+
+            # przesunięcie białego kwadracika (uchwytu), by podążał za nowym rogiem
+            h_s = 4
+            self.canvas.coords(handle_id, new_x2 - h_s, new_y2 - h_s, new_x2 + h_s, new_y2 + h_s)
+
+            # tło etykiety i tekst zostają w lewym górnym rogu (coords[0], coords[1])
+            # zmiana rozmiaru oznacza w aplikacji tylko rozciąganie w dół/prawo.
 
         self.last_mouse_x = event.x
         self.last_mouse_y = event.y
@@ -734,103 +803,105 @@ class ManuscriptEditor:
 
 
     def _on_box_release(self, event):
-        """ zapis nowych współrzędnych do pliku JSON po puszczeniu myszy """
-        if not hasattr(self, 'dragging_box_tag') or self.dragging_box_tag is None:
+        """ finalizacja operacji i zapis do JSON """
+        # ujednolicony tag aktywnego obiektu
+        tag = getattr(self, 'active_box_tag', None)
+        if not tag:
             return
 
-        # odczytanie aktualnych współrzędnych ramki na ekranie (x1, y1, x2, y2)
-        items = self.canvas.find_withtag(self.dragging_box_tag)
+        items = self.canvas.find_withtag(tag)
         rect_id = None
+
+        # szukanie głównej ramki po tagu
         for item in items:
-            if self.canvas.type(item) == "rectangle" and "ner_box" in self.canvas.gettags(item):
-                # sprawdzenie czy to nie jest tło etykiety
-                coords = self.canvas.coords(item)
-                if abs(coords[2] - coords[0]) > 5:
-                    rect_id = item
-                    break
+            if "main_rect" in self.canvas.gettags(item):
+                rect_id = item
+                break
 
         if rect_id:
-            # odczytanie aktualnych współrzędnych ramki na ekranie (x1, y1, x2, y2)
             coords = self.canvas.coords(rect_id)
-
-            # przeliczanie współrzędnych ekranowych na skalę wg Gemini (0-1000)
             orig_w = self.original_image.width
             orig_h = self.original_image.height
 
+            # przeliczenie na skalę modelu: 0-1000
             x1_model = int(((coords[0] - self.img_x) / self.scale) * 1000 / orig_w)
             y1_model = int(((coords[1] - self.img_y) / self.scale) * 1000 / orig_h)
             x2_model = int(((coords[2] - self.img_x) / self.scale) * 1000 / orig_w)
             y2_model = int(((coords[3] - self.img_y) / self.scale) * 1000 / orig_h)
 
-            # aktualizacja metadanych w pamięci i zapis do pliku JSON
             json_path = self._get_ner_json_path()
-            if os.path.exists(json_path):
+            if json_path and os.path.exists(json_path):
+                try:
+                    with open(json_path, 'r', encoding='utf-8') as f:
+                        cache_data = json.load(f)
+
+                    idx = self.box_to_data_map[tag]
+                    cache_data["coordinates"][idx]["coords"] = [y1_model, x1_model, y2_model, x2_model]
+
+                    with open(json_path, 'w', encoding='utf-8') as f:
+                        json.dump(cache_data, f, ensure_ascii=False, indent=4)
+
+                except Exception as e:
+                    print(f"Błąd zapisu JSON: {e}")
+
+        # resetowanie stanu
+        self.canvas.config(cursor="")
+        self.active_box_tag = None
+        self.box_action = None
+
+
+    def _on_box_delete(self, event, entity_tag):
+        """ usuwanie ramki z obrazu i aktualizacja pliku JSON """
+        # indeks ramki z mapy
+        idx = self.box_to_data_map.get(entity_tag)
+        if idx is None:
+            return
+
+        # potwierdzenie usuwania
+        # if not messagebox.askyesno("Usuwanie", "Czy usunąć tę ramkę ze skanu?", parent=self.root):
+        #     return
+
+        # aktualizacja pliku JSON
+        json_path = self._get_ner_json_path()
+        if json_path and os.path.exists(json_path):
+            try:
                 with open(json_path, 'r', encoding='utf-8') as f:
                     cache_data = json.load(f)
 
-                idx = self.box_to_data_map[self.dragging_box_tag]
-                cache_data["coordinates"][idx]["coords"] = [y1_model, x1_model, y2_model, x2_model]
+                if "coordinates" in cache_data:
+                    # usuwanie elementu o konkretnym indeksie
+                    removed_item = cache_data["coordinates"].pop(idx)
 
-                with open(json_path, 'w', encoding='utf-8') as f:
-                    json.dump(cache_data, f, ensure_ascii=False, indent=4)
+                    # zapis zaktualizowango pliku
+                    with open(json_path, 'w', encoding='utf-8') as f:
+                        json.dump(cache_data, f, ensure_ascii=False, indent=4)
 
-        self.dragging_box_tag = None
+                    # odrysowanie ramek, aby zaktualizować indeksy w box_to_data_map
+                    self._draw_boxes_only(cache_data["coordinates"])
 
-
-    # def _on_box_press(self, event, rect_id):
-    #     """ inicjowanie przesuwania konkretnej ramki """
-    #     self.dragging_box_id = rect_id
-    #     self.last_mouse_x = event.x
-    #     self.last_mouse_y = event.y
-    #     return "break" # zapobiega przesuwaniu całego skanu pod spodem
-
-
-    # def _on_box_drag(self, event):
-    #     """ przesuwanie ramki na ekranie """
-    #     if self.dragging_box_id is None:
-    #         return
-
-    #     dx = event.x - self.last_mouse_x
-    #     dy = event.y - self.last_mouse_y
-
-    #     # przesuwanie jedynie wybranej ramki na canvasie
-    #     self.canvas.move(self.dragging_box_id, dx, dy)
-
-    #     self.last_mouse_x = event.x
-    #     self.last_mouse_y = event.y
-    #     return "break"
+                    #print(f"Usunięto ramkę dla: {removed_item.get('name')}")
+            except Exception as e:
+                messagebox.showerror("Błąd", f"Nie udało się zaktualizować pliku JSON: {e}")
 
 
-    # def _on_box_release(self, event):
-    #     """ zapis nowych współrzędnych do pliku JSON po puszczeniu myszy """
-    #     if self.dragging_box_id is None:
-    #         return
+    def _on_box_press(self, event, entity_tag):
+        """ rozpoznaje czy użytkownik chce przesuwać, czy zmieniać rozmiar """
+        self.active_box_tag = entity_tag
+        self.last_mouse_x = event.x
+        self.last_mouse_y = event.y
 
-    #     # odczytanie aktualnych współrzędnych ramki na ekranie (x1, y1, x2, y2)
-    #     coords = self.canvas.coords(self.dragging_box_id)
+        # sprawdzanie co dokładnie kliknięto
+        item_under_mouse = self.canvas.find_closest(event.x, event.y)[0]
+        tags = self.canvas.gettags(item_under_mouse)
 
-    #     # przeliczanie współrzędnych ekranowych na skalę wg Gemini (0-1000)
-    #     orig_w = self.original_image.width
-    #     orig_h = self.original_image.height
+        if "resize_handle" in tags:
+            self.box_action = "resize"
+            self.canvas.config(cursor=self.cursor_resizing)
+        else:
+            self.box_action = "move"
+            self.canvas.config(cursor=self.cursor_move)
 
-    #     x1_model = int(((coords[0] - self.img_x) / self.scale) * 1000 / orig_w)
-    #     y1_model = int(((coords[1] - self.img_y) / self.scale) * 1000 / orig_h)
-    #     x2_model = int(((coords[2] - self.img_x) / self.scale) * 1000 / orig_w)
-    #     y2_model = int(((coords[3] - self.img_y) / self.scale) * 1000 / orig_h)
-
-    #     # aktualizacja metadanych w pamięci i zapis do pliku JSON
-    #     json_path = self._get_ner_json_path()
-    #     if os.path.exists(json_path):
-    #         with open(json_path, 'r', encoding='utf-8') as f:
-    #             cache_data = json.load(f)
-
-    #         idx = self.box_to_data_map[self.dragging_box_id]
-    #         cache_data["coordinates"][idx]["coords"] = [y1_model, x1_model, y2_model, x2_model]
-
-    #         with open(json_path, 'w', encoding='utf-8') as f:
-    #             json.dump(cache_data, f, ensure_ascii=False, indent=4)
-
-    #     self.dragging_box_id = None
+        return "break" # blokada ruchu skanu
 
 
     def change_tts_language(self, event):
