@@ -516,7 +516,7 @@ class ManuscriptEditor:
                 self.last_entities = entities_dict
 
                 # zapis metdanych NER do pliku *.json
-                self._save_ner_cache(entities_dict, checksum)
+                self._save_ner_cache(entities=entities_dict, coordinates=None, checksum=checksum)
 
                 self.root.after(0, self._apply_ner_categories, entities_dict)
         except Exception as e:

@@ -89,7 +89,7 @@ Example of colour coding different categories of entity names (PERSON, LOC, ORG)
 
 In some scans, manual reading of text can be facilitated by image filters, the following filters are available: negative and contrast (the screenshot below shows the negative filter used).
 
-![Screen](/doc/screen_scan_transcript_filtr.png)
+![Screen](/doc/screen_scan_transcript_filtr.jpg)
 
 The Gemini model was involved in the application programming :-)
 
