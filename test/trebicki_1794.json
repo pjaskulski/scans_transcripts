@@ -1,0 +1,42 @@
+{
+    "entities": {
+        "PERS": [
+            "Henr. Dąbrowski",
+            "Michała Trębickiego"
+        ],
+        "LOC": [
+            "Prus"
+        ],
+        "ORG": []
+    },
+    "checksum": "2cb243fb5d23ba99b8e2cb6443eff4ee51671628a0c0e3bcbfce6547e04a32f6",
+    "coordinates": [
+        {
+            "name": "Henr. Dąbrowski",
+            "coords": [
+                206,
+                587,
+                296,
+                944
+            ]
+        },
+        {
+            "name": "Michała Trębickiego",
+            "coords": [
+                598,
+                90,
+                705,
+                878
+            ]
+        },
+        {
+            "name": "Prus",
+            "coords": [
+                225,
+                153,
+                278,
+                285
+            ]
+        }
+    ]
+}

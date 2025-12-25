@@ -1,0 +1,52 @@
+{
+    "entities": {
+        "PERS": [
+            "Jędrzey Badurski",
+            "Jozefa z Kasterow Badurska",
+            "Kajetana"
+        ],
+        "LOC": [],
+        "ORG": [
+            "Urządu Radzieckiego Krakowskiego"
+        ]
+    },
+    "coordinates": [
+        {
+            "name": "Jędrzey Badurski",
+            "coords": [
+                148,
+                59,
+                250,
+                923
+            ]
+        },
+        {
+            "name": "Jozefa z Kasterow Badurska",
+            "coords": [
+                261,
+                54,
+                371,
+                997
+            ]
+        },
+        {
+            "name": "Kajetana",
+            "coords": [
+                565,
+                782,
+                633,
+                915
+            ]
+        },
+        {
+            "name": "Urządu Radzieckiego Krakowskiego",
+            "coords": [
+                802,
+                59,
+                958,
+                940
+            ]
+        }
+    ],
+    "checksum": "67d432d10db772d73dd3c1e741784d609d07ba896137fc9c384eff0b598098c1"
+}

@@ -1,0 +1,31 @@
+{
+    "entities": {
+        "PERS": [],
+        "LOC": [
+            "W-nie",
+            "W-leńszczyźnie"
+        ],
+        "ORG": []
+    },
+    "coordinates": [
+        {
+            "name": "W-nie",
+            "coords": [
+                406,
+                138,
+                439,
+                280
+            ]
+        },
+        {
+            "name": "W-leńszczyźnie",
+            "coords": [
+                399,
+                334,
+                443,
+                712
+            ]
+        }
+    ],
+    "checksum": "312d54d103af459001e704792e70b5c5b0ba8c31af85654b0cf3bb60b35af574"
+}

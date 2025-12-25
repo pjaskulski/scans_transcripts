@@ -1,0 +1,179 @@
+{
+    "entities": {
+        "PERS": [
+            "Susłowa"
+        ],
+        "LOC": [],
+        "ORG": [
+            "Biura Politycznego KC",
+            "DOKP",
+            "KC",
+            "Komitetami Wojewódzkimi",
+            "KPZR",
+            "Oddziałów ZZK",
+            "PRK",
+            "Wydział Komunikacyjny KC",
+            "Wydziałów Komunikacyjnych KW",
+            "Wydziałów Pol.-Wych.DOKP",
+            "XX Zjeździe KPZR",
+            "Zarządem Polityczno-Wychowawczym MK",
+            "ZZK"
+        ]
+    },
+    "coordinates": [
+        {
+            "name": "Susłowa",
+            "coords": [
+                191,
+                816,
+                207,
+                935
+            ]
+        },
+        {
+            "name": "Biura Politycznego KC",
+            "coords": [
+                72,
+                411,
+                93,
+                740
+            ]
+        },
+        {
+            "name": "DOKP",
+            "coords": [
+                653,
+                772,
+                669,
+                840
+            ]
+        },
+        {
+            "name": "DOKP",
+            "coords": [
+                870,
+                461,
+                886,
+                527
+            ]
+        },
+        {
+            "name": "KC",
+            "coords": [
+                71,
+                691,
+                90,
+                728
+            ]
+        },
+        {
+            "name": "KC",
+            "coords": [
+                504,
+                444,
+                523,
+                482
+            ]
+        },
+        {
+            "name": "Komitetami Wojewódzkimi",
+            "coords": [
+                583,
+                496,
+                605,
+                823
+            ]
+        },
+        {
+            "name": "KPZR",
+            "coords": [
+                192,
+                147,
+                209,
+                220
+            ]
+        },
+        {
+            "name": "Oddziałów ZZK",
+            "coords": [
+                683,
+                353,
+                700,
+                552
+            ]
+        },
+        {
+            "name": "PRK",
+            "coords": [
+                660,
+                859,
+                675,
+                912
+            ]
+        },
+        {
+            "name": "PRK",
+            "coords": [
+                872,
+                717,
+                886,
+                772
+            ]
+        },
+        {
+            "name": "Wydział Komunikacyjny KC",
+            "coords": [
+                500,
+                141,
+                521,
+                501
+            ]
+        },
+        {
+            "name": "Wydziałów Komunikacyjnych KW",
+            "coords": [
+                631,
+                155,
+                652,
+                548
+            ]
+        },
+        {
+            "name": "Wydziałów Pol.-Wych.DOKP",
+            "coords": [
+                631,
+                535,
+                651,
+                936
+            ]
+        },
+        {
+            "name": "XX Zjeździe KPZR",
+            "coords": [
+                159,
+                788,
+                179,
+                975
+            ]
+        },
+        {
+            "name": "Zarządem Polityczno-Wychowawczym MK",
+            "coords": [
+                488,
+                504,
+                513,
+                987
+            ]
+        },
+        {
+            "name": "ZZK",
+            "coords": [
+                659,
+                491,
+                674,
+                539
+            ]
+        }
+    ],
+    "checksum": "a26e0632f9bf8bfc6950dda3616f65006bf63f2e353fa5a0e2b280bd39a7e67c"
+}

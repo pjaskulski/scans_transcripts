@@ -1,0 +1,119 @@
+{
+    "entities": {
+        "PERS": [
+            "Genia",
+            "panią T.",
+            "T.",
+            "P.",
+            "Mania",
+            "Frania"
+        ],
+        "LOC": [
+            "Łódź",
+            "Bandurskiego"
+        ],
+        "ORG": []
+    },
+    "coordinates": [
+        {
+            "name": "Łódź",
+            "coords": [
+                35,
+                635,
+                89,
+                760
+            ]
+        },
+        {
+            "name": "Bandurskiego",
+            "coords": [
+                92,
+                646,
+                143,
+                904
+            ]
+        },
+        {
+            "name": "Genia",
+            "coords": [
+                272,
+                510,
+                314,
+                620
+            ]
+        },
+        {
+            "name": "Genia",
+            "coords": [
+                317,
+                148,
+                371,
+                302
+            ]
+        },
+        {
+            "name": "panią T.",
+            "coords": [
+                313,
+                705,
+                366,
+                890
+            ]
+        },
+        {
+            "name": "T.",
+            "coords": [
+                316,
+                854,
+                365,
+                895
+            ]
+        },
+        {
+            "name": "T.",
+            "coords": [
+                814,
+                34,
+                859,
+                79
+            ]
+        },
+        {
+            "name": "P.",
+            "coords": [
+                723,
+                37,
+                772,
+                77
+            ]
+        },
+        {
+            "name": "P.",
+            "coords": [
+                906,
+                428,
+                957,
+                465
+            ]
+        },
+        {
+            "name": "Mania",
+            "coords": [
+                763,
+                712,
+                812,
+                871
+            ]
+        },
+        {
+            "name": "Frania",
+            "coords": [
+                910,
+                169,
+                952,
+                375
+            ]
+        }
+    ],
+    "checksum": "ce0f0cc3fcc2a2e56d304f83c6dbb7d784f6f1e72f7a3a2186052195a75e9d84"
+}

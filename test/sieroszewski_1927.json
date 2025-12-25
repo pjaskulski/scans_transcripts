@@ -1,0 +1,60 @@
+{
+    "entities": {
+        "PERS": [],
+        "LOC": [
+            "Kaukazu",
+            "Syberyi",
+            "Kaukazem",
+            "Soczi"
+        ],
+        "ORG": []
+    },
+    "coordinates": [
+        {
+            "name": "Kaukazu",
+            "coords": [
+                114,
+                511,
+                163,
+                638
+            ]
+        },
+        {
+            "name": "Syberyi",
+            "coords": [
+                228,
+                867,
+                277,
+                958
+            ]
+        },
+        {
+            "name": "Kaukazem",
+            "coords": [
+                278,
+                572,
+                316,
+                709
+            ]
+        },
+        {
+            "name": "Soczi",
+            "coords": [
+                592,
+                86,
+                632,
+                178
+            ]
+        },
+        {
+            "name": "Kaukazu",
+            "coords": [
+                640,
+                156,
+                681,
+                343
+            ]
+        }
+    ],
+    "checksum": "63097637d9013b1808eeab1de15c7a8d60a4478b31bda0b84f1ff05c83de413b"
+}

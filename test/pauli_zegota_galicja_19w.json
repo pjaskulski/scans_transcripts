@@ -1,0 +1,39 @@
+{
+    "entities": {
+        "PERS": [
+            "Leon",
+            "Lew Daniłowicz",
+            "Konstancya",
+            "Bolesław Trojdenowicz",
+            "Marya",
+            "Kazimierz W.",
+            "Naruszewicz"
+        ],
+        "LOC": [
+            "Lwów",
+            "Leopolis",
+            "Pełtew",
+            "Poltew",
+            "Łysa",
+            "Halicz",
+            "Lwihorod",
+            "Mazow.",
+            "Ruś Czerwona",
+            "Löwenberg",
+            "Lemburg"
+        ],
+        "ORG": []
+    },
+    "coordinates": [
+        {
+            "name": "Lwów",
+            "coords": [
+                25,
+                522,
+                70,
+                612
+            ]
+        }
+    ],
+    "checksum": "b1856d46697d36ae309cfd09cae7d9c6f8aef154c5ae7b4ef84a968d44726fb1"
+}

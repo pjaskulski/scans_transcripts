@@ -1,0 +1,93 @@
+{
+    "entities": {
+        "PERS": [
+            "Cesarza Alexandra",
+            "Napoleona",
+            "Wielkiego Księcia Konstantego"
+        ],
+        "LOC": [
+            "Francyi",
+            "Królestwa Polskiego",
+            "Paryżu",
+            "Polski"
+        ],
+        "ORG": [
+            "2go Pułku Ułanów"
+        ]
+    },
+    "coordinates": [
+        {
+            "name": "Cesarza Alexandra",
+            "coords": [
+                34,
+                747,
+                105,
+                909
+            ]
+        },
+        {
+            "name": "Napoleona",
+            "coords": [
+                138,
+                65,
+                179,
+                263
+            ]
+        },
+        {
+            "name": "Wielkiego Księcia Konstantego",
+            "coords": [
+                603,
+                204,
+                656,
+                821
+            ]
+        },
+        {
+            "name": "Francyi",
+            "coords": [
+                245,
+                835,
+                292,
+                958
+            ]
+        },
+        {
+            "name": "Królestwa Polskiego",
+            "coords": [
+                146,
+                625,
+                192,
+                973
+            ]
+        },
+        {
+            "name": "Paryżu",
+            "coords": [
+                102,
+                638,
+                142,
+                754
+            ]
+        },
+        {
+            "name": "Polski",
+            "coords": [
+                506,
+                60,
+                555,
+                180
+            ]
+        },
+        {
+            "name": "2go Pułku Ułanów",
+            "coords": [
+                327,
+                561,
+                384,
+                904
+            ]
+        }
+    ],
+    "checksum": "fc905c012e589f8bcc92b545e990a2afbf2199a0c1e031d6c9302111411d53a1"
+}

@@ -1,0 +1,199 @@
+{
+    "entities": {
+        "PERS": [
+            "J.Marchlewskiego",
+            "C.Budzyńska"
+        ],
+        "LOC": [
+            "Warszawa",
+            "ZSRR"
+        ],
+        "ORG": [
+            "Centralny Szkoła P.Z.P.R. im.J.Marchlewskiego",
+            "SEKRETARIAT KOMITETU CENTRALNEGO PZPR",
+            "PZPR",
+            "C.S. PZPR",
+            "Wystawą Rolniczą",
+            "MTS",
+            "POM",
+            "WZR",
+            "PZR",
+            "ZMP",
+            "C.S.PZPZ"
+        ]
+    },
+    "coordinates": [
+        {
+            "name": "Centralny Szkoła P.Z.P.R. im.J.Marchlewskiego",
+            "coords": [
+                76,
+                93,
+                108,
+                404
+            ]
+        },
+        {
+            "name": "PZPR",
+            "coords": [
+                76,
+                297,
+                92,
+                404
+            ]
+        },
+        {
+            "name": "J.Marchlewskiego",
+            "coords": [
+                91,
+                131,
+                110,
+                400
+            ]
+        },
+        {
+            "name": "Warszawa",
+            "coords": [
+                109,
+                89,
+                127,
+                204
+            ]
+        },
+        {
+            "name": "SEKRETARIAT KOMITETU CENTRALNEGO PZPR",
+            "coords": [
+                240,
+                385,
+                267,
+                839
+            ]
+        },
+        {
+            "name": "PZPR",
+            "coords": [
+                242,
+                773,
+                266,
+                839
+            ]
+        },
+        {
+            "name": "C.S. PZPR",
+            "coords": [
+                345,
+                286,
+                365,
+                423
+            ]
+        },
+        {
+            "name": "PZPR",
+            "coords": [
+                345,
+                356,
+                363,
+                423
+            ]
+        },
+        {
+            "name": "J.Marchlewskiego",
+            "coords": [
+                344,
+                445,
+                364,
+                632
+            ]
+        },
+        {
+            "name": "ZSRR",
+            "coords": [
+                377,
+                190,
+                393,
+                263
+            ]
+        },
+        {
+            "name": "Wystawą Rolniczą",
+            "coords": [
+                483,
+                410,
+                506,
+                629
+            ]
+        },
+        {
+            "name": "MTS",
+            "coords": [
+                502,
+                331,
+                519,
+                378
+            ]
+        },
+        {
+            "name": "POM",
+            "coords": [
+                564,
+                158,
+                584,
+                206
+            ]
+        },
+        {
+            "name": "WZR",
+            "coords": [
+                572,
+                393,
+                592,
+                439
+            ]
+        },
+        {
+            "name": "PZR",
+            "coords": [
+                570,
+                466,
+                589,
+                514
+            ]
+        },
+        {
+            "name": "ZMP",
+            "coords": [
+                576,
+                800,
+                595,
+                841
+            ]
+        },
+        {
+            "name": "C.S.PZPZ",
+            "coords": [
+                732,
+                693,
+                749,
+                793
+            ]
+        },
+        {
+            "name": "J.Marchlewskiego",
+            "coords": [
+                750,
+                602,
+                768,
+                792
+            ]
+        },
+        {
+            "name": "C.Budzyńska",
+            "coords": [
+                794,
+                604,
+                816,
+                743
+            ]
+        }
+    ],
+    "checksum": "8f285193c525de23f3e9f3b9a4bf11e4b0830856f154255158fcf5826742bcb8"
+}
