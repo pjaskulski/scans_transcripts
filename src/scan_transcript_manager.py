@@ -225,6 +225,10 @@ class ManuscriptEditor:
                                   bootstyle="success-outline", width=4, padding=2, state="disabled")
         self.btn_box.pack(side=LEFT, padx=2)
 
+        self.btn_cls = ttk.Button(ai_tools, text="CLS", command=self.clear_all_annotations,
+                                  bootstyle="success-outline", width=4, padding=2, state="disabled")
+        self.btn_cls.pack(side=LEFT, padx=2)
+
         # prawa strona wiersza 2: lektor (TTS)
         tts_tools = ttk.Frame(self.header_row2)
         tts_tools.pack(side=RIGHT)
@@ -375,6 +379,21 @@ class ManuscriptEditor:
 
         self.select_folder()
 
+
+    def clear_all_annotations(self):
+        """ usuwanie wszystkich ramek ze skanu i podświetlenia z tekstu """
+        # czyszczenie skanu
+        self.canvas.delete("ner_box")
+
+        # czyszczenie podświetleń w tekście (NER + wyszukiwanie)
+        for tag in ["PERS", "LOC", "ORG", "search_highlight"]:
+            self.text_area.tag_remove(tag, "1.0", tk.END)
+
+        # resetowanie stanu przycisków
+        self.btn_cls.config(state="disabled")
+        self.btn_box.config(state="disabled")
+
+
     def _calculate_checksum(self, text):
         """ suma kontrolna SHA-256 dla tekstu transkrypcji """
         return hashlib.sha256(text.encode('utf-8')).hexdigest()
@@ -483,6 +502,7 @@ class ManuscriptEditor:
                     self.text_area.tag_remove("ORG", "1.0", tk.END)
                     self._apply_ner_categories(self.last_entities)
                     self.btn_ner.config(state="normal")
+                    self.btn_cls.config(state="normal")
                     return
 
             except Exception as e:
@@ -602,6 +622,7 @@ class ManuscriptEditor:
 
         if any(entities_dict.values()):
             self.btn_box.config(state="normal")
+            self.btn_cls.config(state="normal")
 
 
     def start_coordinates_analysis(self):
@@ -1157,6 +1178,7 @@ class ManuscriptEditor:
         # reset
         self.last_entities = []
         self.btn_box.config(state="disabled")
+        self.btn_cls.config(state="disabled")
         self.canvas.delete("ner_box")
 
         # aktualizacja nagłówka
