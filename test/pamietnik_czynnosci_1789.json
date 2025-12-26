@@ -13,24 +13,27 @@
     "coordinates": [
         {
             "name": "Jędrzey Badurski",
+            "category": "PERS",
             "coords": [
                 148,
                 59,
-                250,
-                923
+                244,
+                234
             ]
         },
         {
             "name": "Jozefa z Kasterow Badurska",
+            "category": "PERS",
             "coords": [
-                261,
+                260,
                 54,
-                371,
-                997
+                350,
+                284
             ]
         },
         {
             "name": "Kajetana",
+            "category": "PERS",
             "coords": [
                 565,
                 782,
@@ -40,11 +43,12 @@
         },
         {
             "name": "Urządu Radzieckiego Krakowskiego",
+            "category": "ORG",
             "coords": [
                 802,
                 59,
-                958,
-                940
+                956,
+                237
             ]
         }
     ],

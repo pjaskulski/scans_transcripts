@@ -25,6 +25,7 @@
     "coordinates": [
         {
             "name": "Centralny Szkoła P.Z.P.R. im.J.Marchlewskiego",
+            "category": "ORG",
             "coords": [
                 76,
                 93,
@@ -34,6 +35,7 @@
         },
         {
             "name": "PZPR",
+            "category": "ORG",
             "coords": [
                 76,
                 297,
@@ -43,6 +45,7 @@
         },
         {
             "name": "J.Marchlewskiego",
+            "category": "PERS",
             "coords": [
                 91,
                 131,
@@ -52,6 +55,7 @@
         },
         {
             "name": "Warszawa",
+            "category": "LOC",
             "coords": [
                 109,
                 89,
@@ -61,6 +65,7 @@
         },
         {
             "name": "SEKRETARIAT KOMITETU CENTRALNEGO PZPR",
+            "category": "ORG",
             "coords": [
                 240,
                 385,
@@ -70,6 +75,7 @@
         },
         {
             "name": "PZPR",
+            "category": "ORG",
             "coords": [
                 242,
                 773,
@@ -79,6 +85,7 @@
         },
         {
             "name": "C.S. PZPR",
+            "category": "ORG",
             "coords": [
                 345,
                 286,
@@ -88,6 +95,7 @@
         },
         {
             "name": "PZPR",
+            "category": "ORG",
             "coords": [
                 345,
                 356,
@@ -97,6 +105,7 @@
         },
         {
             "name": "J.Marchlewskiego",
+            "category": "PERS",
             "coords": [
                 344,
                 445,
@@ -106,6 +115,7 @@
         },
         {
             "name": "ZSRR",
+            "category": "LOC",
             "coords": [
                 377,
                 190,
@@ -115,6 +125,7 @@
         },
         {
             "name": "Wystawą Rolniczą",
+            "category": "ORG",
             "coords": [
                 483,
                 410,
@@ -124,6 +135,7 @@
         },
         {
             "name": "MTS",
+            "category": "ORG",
             "coords": [
                 502,
                 331,
@@ -133,6 +145,7 @@
         },
         {
             "name": "POM",
+            "category": "ORG",
             "coords": [
                 564,
                 158,
@@ -142,6 +155,7 @@
         },
         {
             "name": "WZR",
+            "category": "ORG",
             "coords": [
                 572,
                 393,
@@ -151,6 +165,7 @@
         },
         {
             "name": "PZR",
+            "category": "ORG",
             "coords": [
                 570,
                 466,
@@ -160,6 +175,7 @@
         },
         {
             "name": "ZMP",
+            "category": "ORG",
             "coords": [
                 576,
                 800,
@@ -169,6 +185,7 @@
         },
         {
             "name": "C.S.PZPZ",
+            "category": "ORG",
             "coords": [
                 732,
                 693,
@@ -178,6 +195,7 @@
         },
         {
             "name": "J.Marchlewskiego",
+            "category": "PERS",
             "coords": [
                 750,
                 602,
@@ -187,6 +205,7 @@
         },
         {
             "name": "C.Budzyńska",
+            "category": "PERS",
             "coords": [
                 794,
                 604,

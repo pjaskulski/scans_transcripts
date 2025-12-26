@@ -13,6 +13,7 @@
     "coordinates": [
         {
             "name": "Henr. Dąbrowski",
+            "category": "PERS",
             "coords": [
                 206,
                 587,
@@ -22,6 +23,7 @@
         },
         {
             "name": "Michała Trębickiego",
+            "category": "PERS",
             "coords": [
                 598,
                 90,
@@ -31,6 +33,7 @@
         },
         {
             "name": "Prus",
+            "category": "LOC",
             "coords": [
                 225,
                 153,

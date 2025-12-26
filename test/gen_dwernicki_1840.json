@@ -18,15 +18,17 @@
     "coordinates": [
         {
             "name": "Cesarza Alexandra",
+            "category": "PERS",
             "coords": [
                 34,
                 747,
-                105,
-                909
+                97,
+                882
             ]
         },
         {
             "name": "Napoleona",
+            "category": "PERS",
             "coords": [
                 138,
                 65,
@@ -36,15 +38,17 @@
         },
         {
             "name": "Wielkiego Księcia Konstantego",
+            "category": "PERS",
             "coords": [
                 603,
-                204,
-                656,
-                821
+                225,
+                657,
+                703
             ]
         },
         {
             "name": "Francyi",
+            "category": "LOC",
             "coords": [
                 245,
                 835,
@@ -54,6 +58,7 @@
         },
         {
             "name": "Królestwa Polskiego",
+            "category": "LOC",
             "coords": [
                 146,
                 625,
@@ -63,6 +68,7 @@
         },
         {
             "name": "Paryżu",
+            "category": "LOC",
             "coords": [
                 102,
                 638,
@@ -72,6 +78,7 @@
         },
         {
             "name": "Polski",
+            "category": "LOC",
             "coords": [
                 506,
                 60,
@@ -81,6 +88,7 @@
         },
         {
             "name": "2go Pułku Ułanów",
+            "category": "ORG",
             "coords": [
                 327,
                 561,

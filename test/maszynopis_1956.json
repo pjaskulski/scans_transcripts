@@ -23,6 +23,7 @@
     "coordinates": [
         {
             "name": "Susłowa",
+            "category": "PERS",
             "coords": [
                 191,
                 816,
@@ -32,6 +33,7 @@
         },
         {
             "name": "Biura Politycznego KC",
+            "category": "ORG",
             "coords": [
                 72,
                 397,
@@ -41,6 +43,7 @@
         },
         {
             "name": "DOKP",
+            "category": "ORG",
             "coords": [
                 653,
                 772,
@@ -50,6 +53,7 @@
         },
         {
             "name": "DOKP",
+            "category": "ORG",
             "coords": [
                 872,
                 392,
@@ -59,6 +63,7 @@
         },
         {
             "name": "Komitetami Wojewódzkimi",
+            "category": "ORG",
             "coords": [
                 583,
                 496,
@@ -68,6 +73,7 @@
         },
         {
             "name": "KPZR",
+            "category": "ORG",
             "coords": [
                 192,
                 147,
@@ -77,6 +83,7 @@
         },
         {
             "name": "Oddziałów ZZK",
+            "category": "ORG",
             "coords": [
                 683,
                 353,
@@ -86,6 +93,7 @@
         },
         {
             "name": "PRK",
+            "category": "ORG",
             "coords": [
                 660,
                 859,
@@ -95,6 +103,7 @@
         },
         {
             "name": "PRK",
+            "category": "ORG",
             "coords": [
                 871,
                 684,
@@ -104,6 +113,7 @@
         },
         {
             "name": "Wydział Komunikacyjny KC",
+            "category": "ORG",
             "coords": [
                 494,
                 141,
@@ -113,6 +123,7 @@
         },
         {
             "name": "Wydziałów Komunikacyjnych KW",
+            "category": "ORG",
             "coords": [
                 631,
                 155,
@@ -122,6 +133,7 @@
         },
         {
             "name": "Wydziałów Pol.-Wych.DOKP",
+            "category": "ORG",
             "coords": [
                 631,
                 535,
@@ -131,6 +143,7 @@
         },
         {
             "name": "XX Zjeździe KPZR",
+            "category": "ORG",
             "coords": [
                 159,
                 788,
@@ -140,6 +153,7 @@
         },
         {
             "name": "Zarządem Polityczno-Wychowawczym MK",
+            "category": "ORG",
             "coords": [
                 499,
                 505,

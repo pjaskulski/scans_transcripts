@@ -17,6 +17,7 @@
     "coordinates": [
         {
             "name": "Łódź",
+            "category": "LOC",
             "coords": [
                 35,
                 635,
@@ -26,6 +27,7 @@
         },
         {
             "name": "Bandurskiego",
+            "category": "LOC",
             "coords": [
                 92,
                 646,
@@ -35,6 +37,7 @@
         },
         {
             "name": "Genia",
+            "category": "PERS",
             "coords": [
                 272,
                 510,
@@ -44,6 +47,7 @@
         },
         {
             "name": "Genia",
+            "category": "PERS",
             "coords": [
                 317,
                 148,
@@ -53,6 +57,7 @@
         },
         {
             "name": "panią T.",
+            "category": "PERS",
             "coords": [
                 313,
                 705,
@@ -62,6 +67,7 @@
         },
         {
             "name": "T.",
+            "category": "PERS",
             "coords": [
                 316,
                 854,
@@ -71,6 +77,7 @@
         },
         {
             "name": "T.",
+            "category": "PERS",
             "coords": [
                 814,
                 34,
@@ -80,6 +87,7 @@
         },
         {
             "name": "P.",
+            "category": "PERS",
             "coords": [
                 723,
                 37,
@@ -89,6 +97,7 @@
         },
         {
             "name": "P.",
+            "category": "PERS",
             "coords": [
                 906,
                 428,
@@ -98,6 +107,7 @@
         },
         {
             "name": "Mania",
+            "category": "PERS",
             "coords": [
                 763,
                 712,
@@ -107,6 +117,7 @@
         },
         {
             "name": "Frania",
+            "category": "PERS",
             "coords": [
                 910,
                 169,

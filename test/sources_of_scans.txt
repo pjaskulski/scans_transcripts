@@ -31,7 +31,7 @@ Address: https://polona2.pl/item/zalacznik-do-umowy-z-dnia-16-sierpnia-1945-r-mi
 Description: Załącznik do umowy z dnia 16 sierpnia 1945 r. między Rzecząpospolitą Polską i Związkiem Socjalistycznych Republik Radzieckich o polsko-radzieckiej granicy państwowej (art. 1) : Liniâ Gosudarstvennoj granicy Soûza SSR c Pol'šej sootvetstvuet linii granicy na dogovornoj karte m1:1.500.000.
 ---
 File: pauli_zegota_galicja_19w.jpg
-Address: https://polona2.pl/item/galicya-t-5-poszczegolne-miasta-i-miejscowosci,MTA1NjY3MTA0/6/#info:metadata
+Address: https://polona2.pl/item/galicya-t-5-poszczegolne-miasta-i-miejscowosci,MTA1NjY3MTA0/25/#info:metadata
 Description: Pauli, Żegota, rękpis - "Galicya". T. 5, Poszczególne miasta i miejscowości
 ---
 File: konarski_o_skutecznym_1760.jpg

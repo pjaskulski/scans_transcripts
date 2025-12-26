@@ -17,6 +17,7 @@
     "coordinates": [
         {
             "name": "ZYGMUNTA trzeciego",
+            "category": "PERS",
             "coords": [
                 807,
                 558,
@@ -26,6 +27,7 @@
         },
         {
             "name": "Rzpltey",
+            "category": "LOC",
             "coords": [
                 371,
                 595,
@@ -35,6 +37,7 @@
         },
         {
             "name": "Rzeczypoſpolitey",
+            "category": "LOC",
             "coords": [
                 847,
                 580,
@@ -44,6 +47,7 @@
         },
         {
             "name": "Seymiku Powiatowym",
+            "category": "ORG",
             "coords": [
                 585,
                 584,
@@ -53,6 +57,7 @@
         },
         {
             "name": "Seymie",
+            "category": "ORG",
             "coords": [
                 628,
                 589,
@@ -62,6 +67,7 @@
         },
         {
             "name": "Seymie Warſzawſkim",
+            "category": "ORG",
             "coords": [
                 802,
                 23,

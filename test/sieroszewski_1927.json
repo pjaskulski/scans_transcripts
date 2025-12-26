@@ -12,6 +12,7 @@
     "coordinates": [
         {
             "name": "Kaukazu",
+            "category": "LOC",
             "coords": [
                 114,
                 511,
@@ -21,6 +22,7 @@
         },
         {
             "name": "Syberyi",
+            "category": "LOC",
             "coords": [
                 228,
                 867,
@@ -30,6 +32,7 @@
         },
         {
             "name": "Kaukazem",
+            "category": "LOC",
             "coords": [
                 278,
                 572,
@@ -39,6 +42,7 @@
         },
         {
             "name": "Soczi",
+            "category": "LOC",
             "coords": [
                 592,
                 86,
@@ -48,6 +52,7 @@
         },
         {
             "name": "Kaukazu",
+            "category": "LOC",
             "coords": [
                 640,
                 156,

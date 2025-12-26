@@ -21,6 +21,57 @@ from just_playback import Playback
 
 
 # ------------------------------- CLASS ----------------------------------------
+class ToolTip:
+    """ klasa tworząca dymek z podpowiedzią z opóźnieniem (500ms) """
+    def __init__(self, widget, text, delay=500):
+        self.widget = widget
+        self.text = text
+        self.delay = delay
+        self.tip_window = None
+        self.id = None  # ID planowanego zdarzenia .after()
+
+        self.widget.bind("<Enter>", self.schedule)
+        self.widget.bind("<Leave>", self.unschedule)
+        self.widget.bind("<ButtonPress>", self.unschedule) # ukrywanie po kliknięciu
+
+    def schedule(self, event=None):
+        """ planowanie wyświetlenia dymka po upływie self.delay """
+        self.unschedule()
+        self.id = self.widget.after(self.delay, self.show_tip)
+
+    def unschedule(self, event=None):
+        """ anuluje planowanie i usuwa okno dymka """
+        if self.id:
+            id_to_cancel = self.id
+            self.id = None
+            self.widget.after_cancel(id_to_cancel)
+
+        # zamkanie okna jeśli istnieje
+        if self.tip_window:
+            tw = self.tip_window
+            self.tip_window = None
+            tw.destroy()
+
+    def show_tip(self):
+        """ wyświetlanie okna z dymkiem i podpowiedzią """
+        if not self.text:
+            return
+
+        # obliczanie pozycji (nad widgetem)
+        x = self.widget.winfo_rootx() + 10
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+
+        self.tip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)
+        tw.wm_geometry(f"+{x}+{y}")
+        tw.attributes("-topmost", True) # zawsze nad oknem głównym
+
+        label = tk.Label(tw, text=self.text, justify=tk.LEFT,
+                         background="#ffffe1", relief=tk.SOLID, borderwidth=1,
+                         font=("Segoe UI", "9", "normal"), padx=8, pady=4)
+        label.pack()
+
+
 class ManuscriptEditor:
     """ główna klasa aplikacji """
     def __init__(self, root):
@@ -145,6 +196,10 @@ class ManuscriptEditor:
         tools_frame = ttk.Frame(self.image_tools)
         tools_frame.pack(side=RIGHT)
 
+        self.btn_fit = ttk.Button(tools_frame, text="<->", command=self.fit_to_width,
+                   bootstyle="success-outline", padding=2)
+        self.btn_fit.pack(side=LEFT, padx=(5,5))
+
         ttk.Label(tools_frame, text="Filtry: ", font=("Segoe UI", 8)).pack(side=LEFT)
         ttk.Button(tools_frame, text="Reset", command=lambda: self.apply_filter("normal"),
                    bootstyle="outline-secondary", padding=2).pack(side=LEFT, padx=1)
@@ -157,7 +212,7 @@ class ManuscriptEditor:
         self.right_frame = ttk.Frame(self.paned)
         self.paned.add(self.right_frame, weight=1)
 
-        # pasek ścieżki do Katalogu
+        # pasek ścieżki do katalogu ze skanami
         self.folder_status_frame = ttk.Frame(self.right_frame)
         self.folder_status_frame.pack(fill=X, padx=5, pady=(0, 5))
 
@@ -196,18 +251,22 @@ class ManuscriptEditor:
         self.search_entry.pack(side=LEFT, padx=2)
         self.search_entry.bind("<Return>", lambda e: self.perform_search())
 
-        ttk.Button(search_frame, text="→", command=self.perform_search,
-                   bootstyle="outline-info", padding=0).pack(side=LEFT)
-        ttk.Button(search_frame, text="×", command=self.clear_search,
-                   bootstyle="outline-info", padding=0).pack(side=LEFT)
+        self.btn_search = ttk.Button(search_frame, text="→", command=self.perform_search,
+                   bootstyle="outline-info", padding=0)
+        self.btn_search.pack(side=LEFT)
+        self.btn_cancelsearch = ttk.Button(search_frame, text="×", command=self.clear_search,
+                   bootstyle="outline-info", padding=0)
+        self.btn_cancelsearch.pack(side=LEFT)
 
         # font pola tekstowego z transkrypcją
         font_tools = ttk.Frame(self.header_row1)
         font_tools.pack(side=RIGHT)
-        ttk.Button(font_tools, text="A-", command=lambda: self.change_font_size(-1),
-                   bootstyle="outline-secondary", width=3, padding=2).pack(side=LEFT, padx=2)
-        ttk.Button(font_tools, text="A+", command=lambda: self.change_font_size(1),
-                   bootstyle="outline-secondary", width=3, padding=2).pack(side=LEFT, padx=2)
+        self.btn_smfont = ttk.Button(font_tools, text="A-", command=lambda: self.change_font_size(-1),
+                   bootstyle="outline-secondary", width=3, padding=2)
+        self.btn_smfont.pack(side=LEFT, padx=2)
+        self.btn_bgfont = ttk.Button(font_tools, text="A+", command=lambda: self.change_font_size(1),
+                   bootstyle="outline-secondary", width=3, padding=2)
+        self.btn_bgfont.pack(side=LEFT, padx=2)
 
         # wiersz 2: narzędzia AI (NER/BOX) i TTS (lektor)
         self.header_row2 = ttk.Frame(self.editor_frame)
@@ -293,20 +352,23 @@ class ManuscriptEditor:
         self.toolbar.pack(fill=X, padx=(5,0))
 
         # przyciski
-        ttk.Button(self.toolbar,
+        self.btn_first = ttk.Button(self.toolbar,
                    text="|<",
                    command=self.first_file,
-                   bootstyle="outline-secondary").pack(side=LEFT, fill=X, expand=True, padx=2)
+                   bootstyle="outline-secondary")
+        self.btn_first.pack(side=LEFT, fill=X, expand=True, padx=2)
 
-        ttk.Button(self.toolbar,
+        self.btn_prev = ttk.Button(self.toolbar,
                    text="<<",
                    command=self.prev_file,
-                   bootstyle="outline-secondary").pack(side=LEFT, fill=X, expand=True, padx=2)
+                   bootstyle="outline-secondary")
+        self.btn_prev.pack(side=LEFT, fill=X, expand=True, padx=2)
 
-        ttk.Button(self.toolbar,
+        self.btn_save = ttk.Button(self.toolbar,
                    text="ZAPISZ",
                    command=self.save_current_text,
-                   bootstyle="success").pack(side=LEFT, fill=X, expand=True, padx=5)
+                   bootstyle="success")
+        self.btn_save.pack(side=LEFT, fill=X, expand=True, padx=5)
 
         # Gemini
         frame_ai = ttk.Frame(self.toolbar)
@@ -319,29 +381,37 @@ class ManuscriptEditor:
         self.btn_ai.pack(side=LEFT, fill=X, expand=True, padx=2)
 
         # Gemini seria
-        ttk.Button(frame_ai, text="Seria", command=self.open_batch_dialog,
-                   bootstyle="danger").pack(side=LEFT, fill=X, expand=True, padx=2)
+        self.btn_seria = ttk.Button(frame_ai,
+                                    text="Seria",
+                                    command=self.open_batch_dialog,
+                                    bootstyle="danger")
+        self.btn_seria.pack(side=LEFT, fill=X, expand=True, padx=2)
 
         # zapis wyników
-        ttk.Button(self.toolbar,
+        self.btn_txt = ttk.Button(self.toolbar,
                    text="TXT",
                    command=self.export_all_data,
-                   bootstyle="info").pack(side=LEFT, fill=X, expand=True, padx=5)
+                   bootstyle="info")
+        self.btn_txt.pack(side=LEFT, fill=X, expand=True, padx=5)
 
-        ttk.Button(self.toolbar,
+        self.btn_docx = ttk.Button(self.toolbar,
                    text="DOCX",
                    command=self.export_all_data_docx,
-                   bootstyle="info").pack(side=LEFT, fill=X, expand=True, padx=5)
+                   bootstyle="info")
+        self.btn_docx.pack(side=LEFT, fill=X, expand=True, padx=5)
 
-        ttk.Button(self.toolbar,
+        self.btn_last = ttk.Button(self.toolbar,
                    text=">|",
                    command=self.last_file,
-                   bootstyle="outline-secondary").pack(side=RIGHT, fill=X, expand=True, padx=2)
+                   bootstyle="outline-secondary")
+        self.btn_last.pack(side=RIGHT, fill=X, expand=True, padx=2)
 
-        ttk.Button(self.toolbar,
+
+        self.btn_next = ttk.Button(self.toolbar,
                    text=">>",
                    command=self.next_file,
-                   bootstyle="outline-secondary").pack(side=RIGHT, fill=X, expand=True, padx=2)
+                   bootstyle="outline-secondary")
+        self.btn_next.pack(side=RIGHT, fill=X, expand=True, padx=2)
 
 
         # pasek stanu promptu
@@ -376,6 +446,30 @@ class ManuscriptEditor:
         self.progress_bar = ttk.Progressbar(self.right_frame,
                                             mode='indeterminate',
                                             bootstyle="success-striped")
+
+        # tooltips
+        ToolTip(self.btn_fit, "Dopasowanie skanu do szerokości pola obrazu")
+        ToolTip(self.btn_ner, "Uruchom analizę nazw własnych (osoby, miejsca, instytucje)")
+        ToolTip(self.btn_box, "Zlokalizuj znalezione nazwy własne na skanie (wymaga wcześniejszego NER)")
+        ToolTip(self.btn_cls, "Wyczyść wszystkie oznaczenia ze skanu i podświetlenia w tekście")
+        ToolTip(self.btn_speak, "Odsłuchaj tekst transkrypcji (lektor)")
+        ToolTip(self.btn_stop, "Zatrzymaj odczytywanie (lektor)")
+        ToolTip(self.btn_pause, "Pauza odczytywania (lektor)")
+
+        ToolTip(self.btn_ai, "Wykonaj pełną transkrypcję bieżącego skanu za pomocą Gemini")
+        ToolTip(self.btn_seria, "Wykonaj transkrypcję serii skanów za pomocą Gemini")
+        ToolTip(self.btn_txt, "Zapis transkrycji dla wszystkich skanów do scalonego pliku txt")
+        ToolTip(self.btn_docx, "Zapis transkrycji dla wszystkich skanów do scalonego pliku docx")
+        ToolTip(self.btn_save, "Zapis zmian w transkrypcji")
+        ToolTip(self.btn_first, "Pierwszy")
+        ToolTip(self.btn_last, "Ostatni")
+        ToolTip(self.btn_prev, "Poprzedni")
+        ToolTip(self.btn_next, "Następny")
+        ToolTip(self.btn_bgfont, "Powiększanie fontu")
+        ToolTip(self.btn_smfont, "Pomniejszanie fontu")
+        ToolTip(self.btn_search, "Uruchom szukanie")
+        ToolTip(self.btn_cancelsearch, "Usuń wyniki wyszukiwania")
+        ToolTip(self.lang_combobox, "Wybór języka dla lektora TTS")
 
         self.select_folder()
 
@@ -453,14 +547,15 @@ class ManuscriptEditor:
     def _parse_coordinates_response(self, text):
         """ wyodrębnia nazwy i współrzędne [y1, x1, y2, x2] z odpowiedzi modelu """
         results = []
-        # wyszukiwanie wzorca: [nazwa] [ymin, xmin, ymax, xmax]
-        pattern = r"(.*?)\s*\[(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\]"
+        # wyszukiwanie wzorca: nazwa, nazwa_kategorii [ymin, xmin, ymax, xmax]
+        pattern = r"(.*?)\s*,(.*?)\s*\[(\d+),\s*(\d+),\s*(\d+),\s*(\d+)\]"
         matches = re.findall(pattern, text)
 
         for m in matches:
             results.append({
-                'name': m[0],
-                'coords': [int(x) for x in m[1:]]
+                'name': m[0].strip(),
+                'category': m[1].strip(),
+                'coords': [int(x) for x in m[2:]]
             })
         return results
 
@@ -521,14 +616,36 @@ class ManuscriptEditor:
         try:
             client = genai.Client(api_key=self.api_key)
 
-            prompt = (
-                "Zidentyfikuj w tekście nazwy własne i przypisz je do kategorii: "
-                "PERS (osoby), LOC (nazwy geograficze/miejscowości/kraje), ORG (organizacje/instytucje). "
-                "UWAGA: Niektóre nazwy mogą być podzielone między wiersze (np. dywizem lub nową linią). "
-                "Zidentyfikuj je jako jedną pełną nazwę. "
-                "Zwróć wynik wyłącznie jako JSON w formacie: "
-                "{\"PERS\": [\"nazwa1\", ...], \"LOC\": [\"nazwa1\", ...], \"ORG\": [\"nazwa1\", ...]}"
-            )
+            prompt = """
+Jesteś ekspertem w dziedzinie historii i paleografii XVIII, XIX oraz XX wieku. Twoim zadaniem
+jest ekstrakcja nazw własnych z transkrypcji dokumentów historycznych.
+
+Zasady klasyfikacji:
+1. PERS (Osoby): Wyodrębnij nazwy osób, mogą to być pełne imiona i nazwiska, ale także zapisy
+   samych nazwisk lub imion, zapisy inicjałów np. A. T., zapisy nazw stosowane w średniowieczu
+   np. Jan z Dąbrówki, uwzględnij także nazwy narodów lub plemion. DOŁĄCZ do nazwy towarzyszące im
+   tytuły szlacheckie (np. hr., margrabia), stopnie wojskowe (np. kpt., gen.),
+   funkcje urzędowe (np. rządzca, wójt) oraz zwroty grzecznościowe (np. JW Pan, Ob.),
+   jeśli występują bezpośrednio przy nazwisku.
+2. LOC (Geografia): Wyodrębnij nazwy miast, wsi, krajów, państw, folwarków, majątków ziemskich, rzek,
+   jezior, guberni oraz konkretne nazwy ulic i placów.
+3. ORG (Organizacje): Wyodrębnij nazwy urzędów, instytucji, pułków wojskowych, parafii, komitetów, stowarzyszeń,
+   fabryk i towarzystw (np. "Towarzystwo Kredytowe Ziemskie").
+
+Instrukcje techniczne:
+- Rekonstrukcja: Jeśli nazwa jest podzielona między wiersze (np. "Krak-" i "ów"),
+  połącz ją w jedno słowo bez dywizu ("Kraków").
+- Normalizacja: Zwróć nazwy w takiej formie (deklinacji), w jakiej występują w tekście, ale usuń
+  znaki podziału wiersza.
+- Czystość: Ignoruj nazwy pospolite, chyba że są częścią nazwy własnej.
+
+Zwróć wynik WYŁĄCZNIE jako JSON w formacie:
+{
+  "PERS": ["nazwa1", ...],
+  "LOC": ["nazwa1", ...],
+  "ORG": ["nazwa1", ...]
+}
+"""
 
             config = types.GenerateContentConfig(
                 automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
@@ -663,17 +780,43 @@ class ManuscriptEditor:
             entities_to_find = []
             for cat, names in self.last_entities.items():
                 for name in names:
-                    entities_to_find.append(name)
+                    entities_to_find.append((name, cat))
 
-            entities_str = ", ".join(entities_to_find)
-            prompt = (f"Na załączonym obrazie znajdź lokalizację następujących nazw: {entities_str}. "
-                      "Uwzględnij tylko i wyłącznie nazwy z listy, inne zignoruj. "
-                      "Dla każdej nazwy podaj współrzędne ramki w formacie: \n"
-                      "nazwa [ymin, xmin, ymax, xmax]\n"
-                      " Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.")
+            entities_str = ""
+            for entity in entities_to_find:
+                entity_name, entity_cat = entity
+                entities_str += f"{entity_name},{entity_cat}\n"
+
+            prompt = f"""
+Na załączonym obrazie znajdź lokalizację następujących nazw,
+(podanych w formie listy par: nazwa_do_wyszukania, kategoria_nazwy, każda para w osobnym wierszu np.
+Felicjan Słomkowski, PERS
+Gniezno, LOC):
+
+{entities_str}.
+
+Uwzględnij tylko i wyłącznie nazwy z listy, inne zignoruj.
+Dla każdej nazwy podaj współrzędne ramki w formacie:
+
+nazwa, nazwa_kategorii [ymin, xmin, ymax, xmax]
+
+na przykład:
+Krakowa, LOC [ymin, xmin, ymax, xmax]
+Henryk Walezy, PERS [ymin, xmin, ymax, xmax]
+...
+
+Wszystkie współrzędne w skali 0-1000.
+Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
+"""
 
             config = types.GenerateContentConfig(
-                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+                image_config=types.ImageConfig(
+                    image_size="1K",
+                ),
+                response_modalities=[
+                    "TEXT"
+                ]
             )
 
             response = client.models.generate_content(
@@ -709,7 +852,8 @@ class ManuscriptEditor:
             name = item['name']
             c = item['coords']
 
-            bg_color = "#ffea00"
+            cat = item.get('category', '?') # kategoria nazwy własnej
+            bg_color = self.category_colors.get(cat, "#fbfaf7")
             line_color = "#ff0000"
 
             x1 = (c[1] * orig_w / 1000) * self.scale + self.img_x
@@ -1189,10 +1333,20 @@ class ManuscriptEditor:
             self.original_image = Image.open(pair['img'])
             self.processed_image = self.original_image.copy()
             self.active_filter = "normal"
-            self.scale = 1.0
-            # skalowanie jeśli obraz jest bardzo duży
-            if self.original_image.width > 1400:
-                self.scale = 1400 / self.original_image.width
+
+            # obsługa dopasowania obrazu do szerokości canvas
+            canvas_w = self.canvas.winfo_width()
+
+            # jeśli szerokość canvasu jest jednak jeszcze nieznana
+            if canvas_w <= 1:
+                # fallback: np. 60% szerokości okna
+                canvas_w = self.root.winfo_width() * 0.6
+
+            # obliczanie skali tak, by obraz zajął całą szerokość (z małym marginesem 10px)
+            self.scale = (canvas_w - 10) / self.original_image.width
+
+            # Ograniczenie, by skan nie był zbyt wielki przy małych plikach
+            if self.scale > 2.0: self.scale = 2.0
 
             self.img_x, self.img_y = 0, 0
             self.redraw_image()
@@ -1228,6 +1382,20 @@ class ManuscriptEditor:
             self.zoom_label.config(text=f"Zoom: {int(self.scale * 100)}%")
         except Exception as e:
             print(f"Błąd rysowania: {e}")
+
+
+    def fit_to_width(self):
+        """ wymusza dopasowanie obrazu do aktualnej szerokości panelu """
+        if not self.original_image:
+            return
+
+        self.canvas.delete("ner_box")
+
+        canvas_w = self.canvas.winfo_width()
+        if canvas_w > 1:
+            self.scale = (canvas_w - 10) / self.original_image.width
+            self.img_x, self.img_y = 0, 0
+            self.redraw_image()
 
 
     def load_prompt_content(self, filepath):

@@ -1,39 +1,45 @@
 {
+    "checksum": "ea8c2ba97eefd310e3e27ccc2f936370f684f8135db318b3f9765d7ed2da1bd4",
     "entities": {
         "PERS": [
-            "Leon",
-            "Lew Daniłowicz",
-            "Konstancya",
-            "Bolesław Trojdenowicz",
-            "Marya",
-            "Kazimierz W.",
-            "Naruszewicz"
+            "Wacław Hier. hr Sierakowski"
         ],
         "LOC": [
-            "Lwów",
-            "Leopolis",
-            "Pełtew",
-            "Poltew",
-            "Łysa",
-            "Halicz",
-            "Lwihorod",
-            "Mazow.",
-            "Ruś Czerwona",
-            "Löwenberg",
-            "Lemburg"
+            "Obroszyn",
+            "Lwowa"
         ],
         "ORG": []
     },
     "coordinates": [
         {
-            "name": "Lwów",
+            "name": "Obroszyn",
+            "category": "LOC",
             "coords": [
-                25,
-                522,
-                70,
-                612
+                207,
+                44,
+                304,
+                217
+            ]
+        },
+        {
+            "name": "Lwowa",
+            "category": "LOC",
+            "coords": [
+                214,
+                624,
+                300,
+                732
+            ]
+        },
+        {
+            "name": "Wacław Hier. hr Sierakowski",
+            "category": "PERS",
+            "coords": [
+                580,
+                35,
+                666,
+                281
             ]
         }
-    ],
-    "checksum": "b1856d46697d36ae309cfd09cae7d9c6f8aef154c5ae7b4ef84a968d44726fb1"
+    ]
 }
