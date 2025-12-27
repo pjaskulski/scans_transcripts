@@ -4,8 +4,8 @@ import re
 import json
 import csv
 import threading
-import tempfile
 import hashlib
+from datetime import datetime
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -13,6 +13,7 @@ from PIL import Image, ImageTk, ImageOps, ImageEnhance
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.widgets.scrolled import ScrolledFrame
+from ttkbootstrap.widgets.tableview import Tableview
 from docx import Document
 from dotenv import load_dotenv
 from google import genai
@@ -91,6 +92,13 @@ class ManuscriptEditor:
         self.config_file = "config.json"
         self.font_family = "Consolas"
         self.font_size = 12
+
+        self.MODEL_PRICES = {
+            "gemini-3-pro-preview": (2.0, 12.0),
+            "gemini-3-flash-preview": (0.5, 3.0),
+            "gemini-3-pro-image-preview": (2.0, 12.0),
+            "gemini-flash-latest": (0.3, 2.5)
+        }
 
         # języki TTS
         self.tts_languages = {
@@ -297,6 +305,10 @@ class ManuscriptEditor:
                                   bootstyle="success-outline", width=4, padding=2)
         self.btn_csv.pack(side=LEFT, padx=2)
 
+        self.btn_log = ttk.Button(ai_tools, text="LOG", command=self.show_usage_log,
+                                  bootstyle="success-outline", width=4, padding=2)
+        self.btn_log.pack(side=LEFT, padx=2)
+
         # prawa strona wiersza 2: lektor (TTS)
         tts_tools = ttk.Frame(self.header_row2)
         tts_tools.pack(side=RIGHT)
@@ -352,9 +364,6 @@ class ManuscriptEditor:
 
         # konfiguracja dla wyszukiwania w tekście transkrypcji
         self.text_area.tag_configure("search_highlight", background="#00ffff", foreground="black")
-
-        # powiązanie dowolnego klawisza z usunięciem podświetleń
-        #self.text_area.bind("<KeyPress>", self._on_text_modified)
 
         # pasek narzędzi
         self.toolbar = ttk.Frame(self.right_frame, padding=(0, 10, 0, 5))
@@ -495,6 +504,72 @@ class ManuscriptEditor:
         self.select_folder()
 
 
+    def show_usage_log(self):
+        """ wyświetlnie okna z historią zużycia tokenów i podsumowaniem kosztów"""
+        if not self.file_pairs:
+            return
+
+        folder = os.path.dirname(self.file_pairs[0]['img'])
+        log_path = os.path.join(folder, "tokens.log")
+
+        if not os.path.exists(log_path):
+            messagebox.showinfo("Log", "Brak pliku tokens.log w bieżącym katalogu.")
+            return
+
+        log_win = tk.Toplevel(self.root)
+        log_win.title("Statystyki zużycia API")
+        log_win.geometry("900x500")
+
+        # wykorzystanie elementu Tableview
+        columns = [
+            {"text": "Data", "stretch": True},
+            {"text": "Model", "stretch": True},
+            {"text": "Input (T)", "stretch": False},
+            {"text": "Output (T)", "stretch": False},
+            {"text": "Koszt ($)", "stretch": False}
+        ]
+
+        row_data = []
+        total_cost = 0.0
+
+        with open(log_path, "r", encoding="utf-8") as f:
+            for line in f:
+                parts = line.strip().split(";")
+                if len(parts) == 5:
+                    row_data.append(tuple(parts))
+                    total_cost += float(parts[4])
+
+        tv = Tableview(log_win, coldata=columns, rowdata=row_data, paginated=True, searchable=True, bootstyle="info")
+        tv.pack(fill=BOTH, expand=True, padx=10, pady=10)
+
+        footer = ttk.Label(log_win, text=f"Łączny koszt dla bieżącego katalogu: ${total_cost:.4f}", font=("Segoe UI", 10, "bold"))
+        footer.pack(pady=10)
+
+
+    def _log_api_usage(self, model_name, usage_metadata):
+        """ obliczanie kosztu użycia API i zapis w logu w bieżącym folderze ze skanami"""
+        if not self.file_pairs or not usage_metadata:
+            return
+
+        folder = os.path.dirname(self.file_pairs[0]['img'])
+        log_path = os.path.join(folder, "tokens.log")
+
+        in_tokens = usage_metadata.prompt_token_count
+        out_tokens = usage_metadata.candidates_token_count
+
+        prices = self.MODEL_PRICES.get(model_name, (0.0, 0.0))
+        cost = (in_tokens / 1_000_000 * prices[0]) + (out_tokens / 1_000_000 * prices[1])
+
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_line = f"{now};{model_name};{in_tokens};{out_tokens};{cost:.6f}\n"
+
+        try:
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(log_line)
+        except Exception as e:
+            print(f"Błąd zapisu kosztów użycia w logu: {e}")
+
+
     def export_ner_to_csv(self):
         """ eksport NER do CSV z mianownikiem i kontekstem z całego katalogu """
         if not self.file_pairs:
@@ -562,11 +637,16 @@ class ManuscriptEditor:
                     automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
                 )
 
+                model="gemini-flash-latest" # lub gemini-3-flash-preview
+
                 response = client.models.generate_content(
-                    model="gemini-flash-latest", # lub gemini-3-flash-preview
+                    model=model,
                     contents=prompt,
                     config=config
                 )
+
+                if response.usage_metadata:
+                    self._log_api_usage(model, response.usage_metadata)
 
                 if response.text:
                     json_str = response.text.replace("```json", "").replace("```", "").strip()
@@ -822,19 +902,25 @@ Zwróć wynik WYŁĄCZNIE jako JSON w formacie:
                 automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
             )
 
+            model = "gemini-flash-latest" # lub gemini-3-flash-preview
+
             response = client.models.generate_content(
-                model="gemini-flash-latest", # lub gemini-3-flash-preview
+                model=model,
                 contents=prompt + "\nTekst: " + text,
                 config=config
             )
+
+            if response.usage_metadata:
+                self._log_api_usage(model, response.usage_metadata)
 
             if response.text:
                 json_str = response.text.replace("```json", "").replace("```", "").strip()
                 entities_dict = json.loads(json_str)
                 self.last_entities = entities_dict
 
-                # zapis metdanych NER do pliku *.json
-                self._save_ner_cache(entities=entities_dict, coordinates=None, checksum=checksum)
+                # zapis metdanych NER do pliku *.json z usunięciem ewentualnych współrzędnych ramek
+                # nowe nazwy własne oznaczają konjieczność wyszukania nowych ramek na skanie
+                self._save_ner_cache(entities=entities_dict, coordinates=[], checksum=checksum)
 
                 self.root.after(0, self._apply_ner_categories, entities_dict)
         except Exception as e:
@@ -863,8 +949,12 @@ Zwróć wynik WYŁĄCZNIE jako JSON w formacie:
             cache_data["checksum"] = checksum
         if entities:
             cache_data["entities"] = entities
-        if coordinates:
-            cache_data["coordinates"] = coordinates
+        if coordinates is not None:
+            # usuwanie jeżeli przekazano pustą listę (czyli odświeżono NER)
+            if coordinates == []:
+                cache_data.pop("coordinates", None)
+            else:
+                cache_data["coordinates"] = coordinates
         if tts_checksum:
             cache_data["tts_checksum"] = tts_checksum
 
@@ -992,14 +1082,19 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
                 ]
             )
 
+            model = "gemini-3-pro-image-preview"
+
             response = client.models.generate_content(
-                model="gemini-3-pro-image-preview",
+                model=model,
                 contents=[
                     types.Part.from_text(text=prompt),
                     types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg')
                 ],
                 config=config
             )
+
+            if response.usage_metadata:
+                self._log_api_usage(model, response.usage_metadata)
 
             if response.text:
                 coordinates_data = self._parse_coordinates_response(response.text)
@@ -2057,7 +2152,7 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
         with open(image_path, 'rb') as f:
             image_bytes = f.read()
 
-        model_name = "gemini-3-pro-preview"
+        model = "gemini-3-pro-preview"
 
         contents = [
             types.Content(
@@ -2077,10 +2172,13 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
         )
 
         response = client.models.generate_content(
-            model=model_name,
+            model=model,
             contents=contents,
             config=generate_content_config
         )
+
+        if response.usage_metadata:
+            self._log_api_usage(model, response.usage_metadata)
 
         return response.text
 
@@ -2126,7 +2224,7 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
             with open(image_path, 'rb') as f:
                 image_bytes = f.read()
 
-            model_name = "gemini-3-pro-preview"
+            model = "gemini-3-pro-preview"
 
             contents = [
                 types.Content(
@@ -2149,14 +2247,20 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
             self.root.after(0, lambda: self.text_area.delete(1.0, tk.END))
 
             # iteracja po strumieniu odpowiedzi
+            loop_usage_metadata = None
             for response in client.models.generate_content_stream(
-                model=model_name,
+                model=model,
                 contents=contents,
                 config=generate_content_config
             ):
                 if response.text:
                     # przekazanie fragmentu tekstu do aktualizacji UI
                     self.root.after(0, self._append_stream_text, response.text)
+                    if response.usage_metadata:
+                        loop_usage_metadata = response.usage_metadata
+
+            if loop_usage_metadata:
+                self.root.after(0, lambda: self._log_api_usage(model, loop_usage_metadata))
 
             self.root.after(0, self._single_finished, True, "")
         except Exception as e:

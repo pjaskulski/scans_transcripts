@@ -1,35 +1,35 @@
 {
-    "checksum": "138830d3da24da3ce20a96e0c693a88de0e2fc3f91b21d651e9eb49f5a94efd8",
+    "checksum": "6d695ad904b72f3ffc3aee5109bd6d8f9b6908dc32959c26c43bbeea9a52fad1",
     "entities": {
-        "PERS": [],
+        "PERS": [
+            "KROLA JMCi Pruſkiego"
+        ],
         "LOC": [
-            "Pruſkiego",
-            "Rzeczypoſpolitey",
+            "Rzeczypospolitey",
             "Polſkiey"
         ],
         "ORG": [
-            "Kommiſſye Skarbowe",
-            "Kommiſſye Woyſkowe"
+            "Kommiſſye Skarbowe y Woyſkowe"
         ]
     },
     "coordinates": [
         {
-            "name": "Pruſkiego",
+            "name": "KROLA JMCi Pruſkiego",
             "category": "PERS",
             "coords": [
-                138,
-                516,
-                168,
-                686
+                137,
+                314,
+                169,
+                681
             ]
         },
         {
-            "name": "Rzeczypoſpolitey",
+            "name": "Rzeczypospolitey",
             "category": "LOC",
             "coords": [
-                226,
-                139,
-                255,
+                223,
+                138,
+                252,
                 436
             ]
         },
@@ -37,20 +37,20 @@
             "name": "Polſkiey",
             "category": "LOC",
             "coords": [
-                873,
-                648,
-                900,
-                792
+                875,
+                576,
+                899,
+                719
             ]
         },
         {
-            "name": "Kommiſſye Skarbowe",
+            "name": "Kommiſſye Skarbowe y Woyſkowe",
             "category": "ORG",
             "coords": [
-                427,
-                625,
-                455,
-                885
+                429,
+                624,
+                453,
+                907
             ]
         }
     ]

@@ -4,7 +4,9 @@ Do you have a collection of scanned manuscripts or typescripts? Do you need a tr
 
 The idea is simple: the user prepares a folder with scans of manuscripts, typescripts, and old prints, and the application uses various Gemini models to prepare transcriptions, assisting in their verification through visual comparison of scans and transcriptions, voice recordings, and named entity recognition (NER) in areas where errors are more likely to occur. Finally, you receive a folder with scans, transcription files in txt format, mp3 voice recordings, and metadata saved in json files.
 
-Since the application uses models via API, their use is subject to a fee, in accordance with Google's current price list. The Gemini Pro 3 model is used for transcription, the Gemini Flash model is used for searching for proper names, and the Gemini Pro 3 Image model (also known as Nano Banana Pro) is used for locating proper names on a scan.  The application can prepare transcriptions for a single image or a series of files. The Gemini API key should be stored in the `.env` file as the `GEMINI_API_KEY` environment variable (or in the `config/config.json` file under the `api_key` field).
+Since the application uses models via API, their use is subject to a fee, in accordance with Google's current [price list](https://ai.google.dev/gemini-api/docs/pricing). 
+
+The Gemini Pro 3 model is used for transcription, the Gemini Flash model is used for searching for proper names, and the Gemini Pro 3 Image model (also known as Nano Banana Pro) is used for locating proper names on a scan.  The application can prepare transcriptions for a single image or a series of files. The Gemini API key should be stored in the `.env` file as the `GEMINI_API_KEY` environment variable (or in the `config/config.json` file under the `api_key` field).
 
 Application Features:
   - Viewing scans and transcripts. The application assumes that the specified directory contains scan files and transcript files with identical names but with the *.txt extension. If a text file is missing, the application will automatically create an empty one.
@@ -17,6 +19,7 @@ Application Features:
   - A feature that aids verification is the ability to read the transcript aloud (TTS reader), this feature requires internet access.
   - Ability to adjust the font size in the transcription field.
   - Due to the fact that transcription errors quite often appear in proper names (people, places, institutions), the option to highlight such words (NER button) has been added so that special attention can be paid to them during transcription verification. Experimental function (BOX button) for marking entity names in the scan. The names are marked with frames, and the name from transcription is placed above the frame, for quick assessment of transcription accuracy. The frames for entity names can be adjusted in terms of size and position. The list of found entity names can be exported to a CSV file for further use.
+  - The application records the cost of all API calls for the current catalog, with information about the date, name of the model used, number of tokens used (input, output), cost of the call, and summarizes the cost for the entire current scan catalog.
 
 
 ## Screenshots and description:
@@ -95,6 +98,10 @@ In some scans, manual reading of text can be facilitated by image filters, the f
 An example of transcription of an 18th-century Polish old print:
 
 ![Screen](/doc/screen_scan_transcript_print.jpg)
+
+API cost control for the current catalog:
+
+![Screen](/doc/cost_control.jpg)
 
 The "test" folder contains sample scans and transcripts.
 
