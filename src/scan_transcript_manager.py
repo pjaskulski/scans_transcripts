@@ -32,9 +32,15 @@ class ToolTip:
         self.tip_window = None
         self.id = None  # ID planowanego zdarzenia .after()
 
+        self.widget.tooltip = self
+
         self.widget.bind("<Enter>", self.schedule)
         self.widget.bind("<Leave>", self.unschedule)
         self.widget.bind("<ButtonPress>", self.unschedule) # ukrywanie po kliknięciu
+
+    def update_text(self, new_text):
+        """ metoda do zmiany treści podpowiedzi po zmianie języka """
+        self.text = new_text
 
     def schedule(self, event=None):
         """ planowanie wyświetlenia dymka po upływie self.delay """
@@ -77,21 +83,31 @@ class ToolTip:
 class ManuscriptEditor:
     """ główna klasa aplikacji """
     def __init__(self, root):
-        self.root = root
-        self.root.title("Przeglądarka Skanów i Transkrypcji")
-        self.root.geometry("1600x900")
+        self.current_lang = "PL" # domyślny język
+        self.current_tts_lang_code = "pl" # domyślny język audio
+        self.localization = {} # słownik wersji językowych
+        self.local_file = "localization.json"
+        self.languages = []
+        self.load_lang()
 
         self.api_key = ""
+        self.default_prompt = ""
         self.prompt_text = ""
         self.prompt_filename_var = tk.StringVar(value="Brak (wybierz plik)")
         self.current_folder_var = tk.StringVar(value="Nie wybrano katalogu")
         self.current_prompt_path = None
 
-        self._init_environment()
-
         self.config_file = "config.json"
         self.font_family = "Consolas"
         self.font_size = 12
+
+        self.load_config()
+        self.t = self.localization[self.current_lang]
+        self._init_environment()
+
+        self.root = root
+        self.root.title(self.t["title"])
+        self.root.geometry("1600x900")
 
         self.MODEL_PRICES = {
             "gemini-3-pro-preview": (2.0, 12.0),
@@ -102,18 +118,15 @@ class ManuscriptEditor:
 
         # języki TTS
         self.tts_languages = {
-            "Polski": "pl",
-            "Łacina": "la",
-            "Angielski": "en",
-            "Niemiecki": "de",
-            "Francuski": "fr",
-            "Hiszpański": "es",
-            "Portugalski": "pt",
-            "Rosyjski": "ru"
+            self.t["tts_pl"]: "pl",
+            self.t["tts_la"]: "la",
+            self.t["tts_en"]: "en",
+            self.t["tts_de"]: "de",
+            self.t["tts_fr"]: "fr",
+            self.t["tts_es"]: "es",
+            self.t["tts_pt"]: "pt",
+            self.t["tts_ru"]: "ru"
         }
-        self.current_tts_lang_code = "pl" # domyślny
-
-        self.load_config()
 
         self.file_pairs = []
         self.current_index = 0
@@ -150,7 +163,7 @@ class ManuscriptEditor:
         self.paned.add(self.left_frame, weight=3)
 
         # ramka na canvas z obramowaniem
-        self.canvas_frame = ttk.Labelframe(self.left_frame, text="Skan", bootstyle="info")
+        self.canvas_frame = ttk.Labelframe(self.left_frame, text=self.t["frame_scan"], bootstyle="info")
         self.canvas_frame.pack(fill=BOTH, expand=True)
 
         # canvas
@@ -191,15 +204,16 @@ class ManuscriptEditor:
         self.image_tools = ttk.Frame(self.left_frame)
         self.image_tools.pack(fill=X, pady=5)
 
-        # lewa strona paska (Instrukcja + Zoom info)
+        # lewa strona paska (instrukcja + Zoom info)
         left_tools = ttk.Frame(self.image_tools)
         left_tools.pack(side=LEFT)
 
         self.zoom_label = ttk.Label(left_tools, text="Zoom: 100%", font=("Segoe UI", 9, "bold"))
         self.zoom_label.pack(side=LEFT, pady=5)
-        ttk.Label(left_tools,
-                  text="LPM: Przesuwanie | Scroll: Zoom | RPM: okno lupy",
-                  font=("Segoe UI", 8), bootstyle="secondary").pack(side=LEFT, pady=5, padx=10)
+        self.lbl_left_tools = ttk.Label(left_tools,
+                  text=self.t["left_tools"],
+                  font=("Segoe UI", 8), bootstyle="secondary")
+        self.lbl_left_tools.pack(side=LEFT, pady=5, padx=10)
 
         # prawa strona paska
         tools_frame = ttk.Frame(self.image_tools)
@@ -209,13 +223,17 @@ class ManuscriptEditor:
                    bootstyle="success-outline", padding=2)
         self.btn_fit.pack(side=LEFT, padx=(5,5))
 
-        ttk.Label(tools_frame, text="Filtry: ", font=("Segoe UI", 8)).pack(side=LEFT)
-        ttk.Button(tools_frame, text="Reset", command=lambda: self.apply_filter("normal"),
-                   bootstyle="outline-secondary", padding=2).pack(side=LEFT, padx=1)
-        ttk.Button(tools_frame, text="Kontrast", command=lambda: self.apply_filter("contrast"),
-                   bootstyle="outline-info", padding=2).pack(side=LEFT, padx=1)
-        ttk.Button(tools_frame, text="Negatyw", command=lambda: self.apply_filter("invert"),
-                   bootstyle="outline-dark", padding=2).pack(side=LEFT, padx=(1,5))
+        self.lbl_filters = ttk.Label(tools_frame, text=self.t["lbl_filters"], font=("Segoe UI", 8))
+        self.lbl_filters.pack(side=LEFT)
+        self.btn_reset = ttk.Button(tools_frame, text=self.t["filter_reset"], command=lambda: self.apply_filter("normal"),
+                   bootstyle="outline-secondary", padding=2)
+        self.btn_reset.pack(side=LEFT, padx=1)
+        self.btn_contrast = ttk.Button(tools_frame, text=self.t["filter_contrast"], command=lambda: self.apply_filter("contrast"),
+                   bootstyle="outline-info", padding=2)
+        self.btn_contrast.pack(side=LEFT, padx=1)
+        self.btn_inverse = ttk.Button(tools_frame, text=self.t["filter_invert"], command=lambda: self.apply_filter("invert"),
+                   bootstyle="outline-dark", padding=2)
+        self.btn_inverse.pack(side=LEFT, padx=(1,5))
 
         # prawy panel (na edytor transkrypcji)
         self.right_frame = ttk.Frame(self.paned)
@@ -225,20 +243,25 @@ class ManuscriptEditor:
         self.folder_status_frame = ttk.Frame(self.right_frame)
         self.folder_status_frame.pack(fill=X, padx=5, pady=(0, 5))
 
-        ttk.Label(self.folder_status_frame, text="Katalog:",
-                  font=("Segoe UI", 8, "bold")).pack(side=LEFT)
+        self.lbl_folder_status = ttk.Label(self.folder_status_frame, text=self.t["folder_path"],
+                  font=("Segoe UI", 8, "bold"))
+        self.lbl_folder_status.pack(side=LEFT)
 
         # etykieta ze ścieżką
         ttk.Label(self.folder_status_frame, textvariable=self.current_folder_var,
                   font=("Segoe UI", 8), bootstyle="dark").pack(side=LEFT, padx=5)
 
         # przycisk zmiany folderu ze skanami
-        ttk.Button(self.folder_status_frame, text="[ZMIEŃ]", command=self.select_folder,
-                   bootstyle="link-secondary", cursor="hand2", padding=0).pack(side=RIGHT)
+        self.btn_folder_change = ttk.Button(self.folder_status_frame,
+                                       text=self.t["btn_folder_change"],
+                                       command=self.select_folder,
+                                       bootstyle="link-secondary",
+                                       cursor="hand2", padding=0)
+        self.btn_folder_change.pack(side=RIGHT)
 
         # ramka na tekst
         self.editor_frame = ttk.Labelframe(self.right_frame,
-                                           text="Transkrypcja",
+                                           text=self.t["frame_trans"],
                                            bootstyle="primary")
         self.editor_frame.pack(fill=BOTH, expand=True, padx=(5,0))
 
@@ -246,9 +269,10 @@ class ManuscriptEditor:
         self.header_row1 = ttk.Frame(self.editor_frame)
         self.header_row1.pack(fill=X, padx=5, pady=2)
 
-        self.file_info_var = tk.StringVar(value="Brak pliku")
-        ttk.Label(self.header_row1, textvariable=self.file_info_var,
-                  font=("Segoe UI", 10, "bold"), bootstyle="inverse-light").pack(side=LEFT, fill=X, expand=True)
+        self.file_info_var = tk.StringVar(value=self.t["file_info"])
+        self.lbl_file_info = ttk.Label(self.header_row1, textvariable=self.file_info_var,
+                  font=("Segoe UI", 10, "bold"), bootstyle="inverse-light")
+        self.lbl_file_info.pack(side=LEFT, fill=X, expand=True)
 
         # wyszukiwanie w tekście transkrypcji
         search_frame = ttk.Frame(self.header_row1)
@@ -276,6 +300,12 @@ class ManuscriptEditor:
         self.btn_bgfont = ttk.Button(font_tools, text="A+", command=lambda: self.change_font_size(1),
                    bootstyle="outline-secondary", width=3, padding=2)
         self.btn_bgfont.pack(side=LEFT, padx=2)
+
+        self.lang_sel = ttk.Combobox(font_tools, values=self.languages, width=5,
+                                     state="readonly")
+        self.lang_sel.set(self.current_lang)
+        self.lang_sel.bind("<<ComboboxSelected>>", self.change_app_language)
+        self.lang_sel.pack(side=LEFT, padx=5)
 
         # wiersz 2: narzędzia AI (NER/BOX) i TTS (lektor)
         self.header_row2 = ttk.Frame(self.editor_frame)
@@ -320,7 +350,7 @@ class ManuscriptEditor:
         if initial_lang_name:
             self.lang_combobox.set(initial_lang_name[0])
         else:
-            self.lang_combobox.set("Polski")
+            self.lang_combobox.set(self.t["tts_pl"])
 
         self.lang_combobox.bind("<<ComboboxSelected>>", self.change_tts_language)
         self.lang_combobox.pack(side=LEFT, padx=2)
@@ -383,7 +413,7 @@ class ManuscriptEditor:
         self.btn_prev.pack(side=LEFT, fill=X, expand=True, padx=2)
 
         self.btn_save = ttk.Button(self.toolbar,
-                   text="ZAPISZ",
+                   text=self.t["btn_save"],
                    command=self.save_current_text,
                    bootstyle="success")
         self.btn_save.pack(side=LEFT, fill=X, expand=True, padx=5)
@@ -400,7 +430,7 @@ class ManuscriptEditor:
 
         # Gemini seria
         self.btn_seria = ttk.Button(frame_ai,
-                                    text="Seria",
+                                    text=self.t["btn_batch"],
                                     command=self.open_batch_dialog,
                                     bootstyle="danger")
         self.btn_seria.pack(side=LEFT, fill=X, expand=True, padx=2)
@@ -444,11 +474,12 @@ class ManuscriptEditor:
                   font=("Segoe UI", 8), bootstyle="dark").pack(side=LEFT, padx=(5,5), pady=2)
 
         # przycisk zmiany promptu
-        ttk.Button(self.prompt_status_frame, text="[ZMIEŃ]", command=self.select_prompt_file,
-                   bootstyle="link-secondary", cursor="hand2", padding=0).pack(side=RIGHT, padx=5)
+        self.btn_prompt_change = ttk.Button(self.prompt_status_frame, text=self.t["btn_prompt"], command=self.select_prompt_file,
+                   bootstyle="link-secondary", cursor="hand2", padding=0)
+        self.btn_prompt_change.pack(side=RIGHT, padx=5)
 
         # przycisk edycji promptu
-        self.btn_edit_prompt = ttk.Button(self.prompt_status_frame, text="[EDYTUJ]",
+        self.btn_edit_prompt = ttk.Button(self.prompt_status_frame, text=self.t["btn_edit_prompt"],
                                         command=self.edit_current_prompt,
                                         bootstyle="link-info", cursor="hand2", padding=0)
         self.btn_edit_prompt.pack(side=RIGHT, padx=5)
@@ -476,36 +507,110 @@ class ManuscriptEditor:
         self.text_area.bind("<ButtonRelease-1>", self.update_active_line_highlight)
 
         # tooltips
-        ToolTip(self.btn_fit, "Dopasowanie skanu do szerokości pola obrazu")
-        ToolTip(self.btn_ner, "Uruchom analizę nazw własnych (osoby, miejsca, instytucje)")
-        ToolTip(self.btn_box, "Zlokalizuj znalezione nazwy własne na skanie (wymaga wcześniejszego NER)")
-        ToolTip(self.btn_cls, "Wyczyść wszystkie oznaczenia ze skanu i podświetlenia w tekście")
-        ToolTip(self.btn_leg, "Pokaż legendę kolorów analizy NER")
-        ToolTip(self.btn_csv, "Eksport nazw własnych do pliku CSV")
-        ToolTip(self.btn_speak, "Odsłuchaj tekst transkrypcji (lektor)")
-        ToolTip(self.btn_stop, "Zatrzymaj odczytywanie (lektor)")
-        ToolTip(self.btn_pause, "Pauza odczytywania (lektor)")
+        self.btn_fit_tooltip = ToolTip(self.btn_fit, self.t["tt_btn_fit"])
+        self.btn_ner_tooltip = ToolTip(self.btn_ner, self.t["tt_btn_ner"])
+        self.btn_box_tooltip = ToolTip(self.btn_box, self.t["tt_btn_box"])
+        self.btn_cls_tooltip = ToolTip(self.btn_cls, self.t["tt_btn_cls"])
+        self.btn_leg_tooltip = ToolTip(self.btn_leg, self.t["tt_btn_leg"])
+        self.btn_csv_tooltip = ToolTip(self.btn_csv, self.t["tt_btn_csv"])
+        self.btn_speak_tooltip = ToolTip(self.btn_speak, self.t["tt_btn_speak"])
+        self.btn_stop_tooltip = ToolTip(self.btn_stop, self.t["tt_btn_stop"])
+        self.btn_pause_tooltip = ToolTip(self.btn_pause, self.t["tt_btn_pause"])
 
-        ToolTip(self.btn_ai, "Wykonaj pełną transkrypcję bieżącego skanu za pomocą Gemini")
-        ToolTip(self.btn_seria, "Wykonaj transkrypcję serii skanów za pomocą Gemini")
-        ToolTip(self.btn_txt, "Zapis transkrycji dla wszystkich skanów do scalonego pliku txt")
-        ToolTip(self.btn_docx, "Zapis transkrycji dla wszystkich skanów do scalonego pliku docx")
-        ToolTip(self.btn_save, "Zapis zmian w transkrypcji")
-        ToolTip(self.btn_first, "Pierwszy")
-        ToolTip(self.btn_last, "Ostatni")
-        ToolTip(self.btn_prev, "Poprzedni")
-        ToolTip(self.btn_next, "Następny")
-        ToolTip(self.btn_bgfont, "Powiększanie fontu")
-        ToolTip(self.btn_smfont, "Pomniejszanie fontu")
-        ToolTip(self.btn_search, "Uruchom szukanie")
-        ToolTip(self.btn_cancelsearch, "Usuń wyniki wyszukiwania")
-        ToolTip(self.lang_combobox, "Wybór języka dla lektora TTS")
+        self.btn_ai_tooltip = ToolTip(self.btn_ai, self.t["tt_btn_ai"])
+        self.btn_seria_tooltip = ToolTip(self.btn_seria, self.t["tt_btn_seria"])
+        self.btn_txt_tooltip = ToolTip(self.btn_txt, self.t["tt_btn_txt"])
+        self.btn_docx_tooltip = ToolTip(self.btn_docx, self.t["tt_btn_docx"])
+        self.btn_save_tooltip = ToolTip(self.btn_save, self.t["tt_btn_save"])
+        self.btn_first_tooltip = ToolTip(self.btn_first, self.t["tt_btn_first"])
+        self.btn_last_tooltip = ToolTip(self.btn_last, self.t["tt_btn_last"])
+        self.btn_prev_tooltip = ToolTip(self.btn_prev, self.t["tt_btn_prev"])
+        self.btn_next_tooltip = ToolTip(self.btn_next, self.t["tt_btn_next"])
+        self.btn_bgfont_tooltip = ToolTip(self.btn_bgfont, self.t["tt_btn_bgfont"])
+        self.btn_smfont_tooltip = ToolTip(self.btn_smfont, self.t["tt_btn_smfont"])
+        self.btn_search_tooltip = ToolTip(self.btn_search, self.t["tt_btn_search"])
+        self.btn_cancelsearch_tooltip = ToolTip(self.btn_cancelsearch, self.t["tt_btn_cancelsearch"])
+        self.lang_combobox_tooltip = ToolTip(self.lang_combobox, self.t["tt_lang_combobox"])
 
         self.select_folder()
 
 
+    def change_app_language(self, event):
+        """ zmiana języka interfejsu użytkownika """
+        tmp = self.lang_sel.get()
+        if tmp != self.current_lang:
+            self.current_lang = tmp
+            self.t = self.localization[self.current_lang]
+            self.save_config()
+            self.update_ui_text()
+        self.lang_sel.selection_clear()
+
+
+    def update_ui_text(self):
+        """odświeżnie tekstów we wszystkich widżetach po zmianie języka"""
+
+        self.tts_languages = {
+            self.t["tts_pl"]: "pl",
+            self.t["tts_la"]: "la",
+            self.t["tts_en"]: "en",
+            self.t["tts_de"]: "de",
+            self.t["tts_fr"]: "fr",
+            self.t["tts_es"]: "es",
+            self.t["tts_pt"]: "pt",
+            self.t["tts_ru"]: "ru"
+        }
+
+        self.root.title(self.t["title"])
+
+        self.lbl_left_tools.config(text=self.t["left_tools"])
+
+        self.canvas_frame.config(text=self.t["frame_scan"])
+        self.editor_frame.config(text=self.t["frame_trans"])
+
+        self.lbl_filters.config(text=self.t["lbl_filters"])
+        self.btn_reset.config(text=self.t["filter_reset"])
+        self.btn_contrast.config(text=self.t["filter_contrast"])
+        self.btn_inverse.config(text=self.t["filter_invert"])
+        self.btn_save.config(text=self.t["btn_save"])
+        self.lbl_folder_status.config(text=self.t["folder_path"])
+        self.btn_folder_change.config(text=self.t["btn_folder_change"])
+        self.btn_seria.config(text=self.t["btn_batch"])
+        self.btn_prompt_change.config(text=self.t["btn_prompt"])
+        self.btn_edit_prompt.config(text=self.t["btn_edit_prompt"])
+
+        self.refresh_tooltips()
+
+
+    def refresh_tooltips(self):
+        """ odświeżanie podpowiedzi w aktualnym języku interfejsu """
+        self.btn_fit_tooltip.update_text(self.t["tt_btn_fit"])
+        self.btn_ner_tooltip.update_text(self.t["tt_btn_ner"])
+        self.btn_box_tooltip.update_text(self.t["tt_btn_box"])
+        self.btn_cls_tooltip.update_text(self.t["tt_btn_cls"])
+        self.btn_leg_tooltip.update_text(self.t["tt_btn_leg"])
+        self.btn_csv_tooltip.update_text(self.t["tt_btn_csv"])
+        self.btn_speak_tooltip.update_text(self.t["tt_btn_speak"])
+        self.btn_stop_tooltip.update_text(self.t["tt_btn_stop"])
+        self.btn_pause_tooltip.update_text(self.t["tt_btn_pause"])
+
+        self.btn_ai_tooltip.update_text(self.t["tt_btn_ai"])
+        self.btn_seria_tooltip.update_text(self.t["tt_btn_seria"])
+        self.btn_txt_tooltip.update_text(self.t["tt_btn_txt"])
+        self.btn_docx_tooltip.update_text(self.t["tt_btn_docx"])
+        self.btn_save_tooltip.update_text(self.t["tt_btn_save"])
+        self.btn_first_tooltip.update_text(self.t["tt_btn_first"])
+        self.btn_last_tooltip.update_text(self.t["tt_btn_last"])
+        self.btn_prev_tooltip.update_text(self.t["tt_btn_prev"])
+        self.btn_next_tooltip.update_text(self.t["tt_btn_next"])
+        self.btn_bgfont_tooltip.update_text(self.t["tt_btn_bgfont"])
+        self.btn_smfont_tooltip.update_text(self.t["tt_btn_smfont"])
+        self.btn_search_tooltip.update_text(self.t["tt_btn_search"])
+        self.btn_cancelsearch_tooltip.update_text(self.t["tt_btn_cancelsearch"])
+        self.lang_combobox_tooltip.update_text(self.t["tt_lang_combobox"])
+
+
     def show_usage_log(self):
-        """ wyświetlnie okna z historią zużycia tokenów i podsumowaniem kosztów"""
+        """ wyświetlenie okna z historią zużycia tokenów i podsumowaniem kosztów"""
         if not self.file_pairs:
             return
 
@@ -513,20 +618,20 @@ class ManuscriptEditor:
         log_path = os.path.join(folder, "tokens.log")
 
         if not os.path.exists(log_path):
-            messagebox.showinfo("Log", "Brak pliku tokens.log w bieżącym katalogu.")
+            messagebox.showinfo("Log", self.t["msg_log_file"])
             return
 
         log_win = tk.Toplevel(self.root)
-        log_win.title("Statystyki zużycia API")
+        log_win.title(self.t["log_win_title"])
         log_win.geometry("900x500")
 
         # wykorzystanie elementu Tableview
         columns = [
-            {"text": "Data", "stretch": True},
-            {"text": "Model", "stretch": True},
-            {"text": "Input (T)", "stretch": False},
-            {"text": "Output (T)", "stretch": False},
-            {"text": "Koszt ($)", "stretch": False}
+            {"text": self.t["table_data"], "stretch": True},
+            {"text": self.t["table_model"], "stretch": True},
+            {"text": self.t["table_input"], "stretch": False},
+            {"text": self.t["table_output"], "stretch": False},
+            {"text": self.t["table_cost"], "stretch": False}
         ]
 
         row_data = []
@@ -539,10 +644,12 @@ class ManuscriptEditor:
                     row_data.append(tuple(parts))
                     total_cost += float(parts[4])
 
-        tv = Tableview(log_win, coldata=columns, rowdata=row_data, paginated=True, searchable=True, bootstyle="info")
+        tv = Tableview(log_win, coldata=columns, rowdata=row_data, paginated=True,
+                       searchable=True, bootstyle="info")
         tv.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
-        footer = ttk.Label(log_win, text=f"Łączny koszt dla bieżącego katalogu: ${total_cost:.4f}", font=("Segoe UI", 10, "bold"))
+        footer = ttk.Label(log_win, text=self.t["total_cost"] + f": ${total_cost:.4f}",
+                           font=("Segoe UI", 10, "bold"))
         footer.pack(pady=10)
 
 
@@ -567,7 +674,7 @@ class ManuscriptEditor:
             with open(log_path, "a", encoding="utf-8") as f:
                 f.write(log_line)
         except Exception as e:
-            print(f"Błąd zapisu kosztów użycia w logu: {e}")
+            print(self.t["msg_log_error"] + f": {e}")
 
 
     def export_ner_to_csv(self):
@@ -576,9 +683,9 @@ class ManuscriptEditor:
             return
 
         target_path = filedialog.asksaveasfilename(
-            title="Zapisz nazwy własne w pliku CSV",
+            title=self.t["file_dialog_csv"],
             defaultextension=".csv",
-            filetypes=[("Plik CSV", "*.csv")],
+            filetypes=[(self.t["file_type_csv"], "*.csv")],
             parent=self.root
         )
         if not target_path:
@@ -605,10 +712,10 @@ class ManuscriptEditor:
                             })
                             unique_names.add(name)
                 except Exception as e:
-                    print(f"Błąd przetwarzania {pair['name']}: {e}")
+                    print(self.t["msg_csv_error"] + f" {pair['name']}: {e}")
 
         if not all_data_to_process:
-            messagebox.showinfo("Eksport", "Brak danych NER do eksportu.")
+            messagebox.showinfo(self.t["msg_csv_info_title"], self.t["msg_csv_info_text"])
             return
 
         self.btn_ai.config(state="disabled")
@@ -655,16 +762,20 @@ class ManuscriptEditor:
             # zapis do CSV (separator średnik)
             with open(target_path, 'w', encoding='utf-8', newline='') as csvfile:
                 writer = csv.writer(csvfile, delimiter=';')
-                writer.writerow(['Nazwa oryginalna', 'Mianownik', 'Kategoria', 'Plik skanu'])
+                writer.writerow([self.t["csv_column_orgname"],
+                                 self.t["csv_column_nominative"],
+                                 self.t["csv_column_category"],
+                                 self.t["csv_column_file"]])
 
                 for rec in full_records:
                     base_name = nominative_map.get(rec['orig'], rec['orig'])
                     writer.writerow([rec['orig'], base_name, rec['cat'], rec['file']])
 
-            self.root.after(0, lambda: messagebox.showinfo("Sukces", f"Eksport zakończony:\n{target_path}"))
+            self.root.after(0, lambda: messagebox.showinfo(self.t["msg_csv_ok_title"],
+                                                           self.t["msg_csv_ok_text"] + f":\n{target_path}"))
 
         except Exception as e:
-            self.root.after(0, lambda: messagebox.showerror("Błąd eksportu", str(e)))
+            self.root.after(0, lambda: messagebox.showerror(self.t["msg_csv_error_text"], str(e)))
         finally:
             self.root.after(0, lambda: self.btn_ai.config(state="normal", text="Gemini"))
 
@@ -689,7 +800,7 @@ class ManuscriptEditor:
     def show_legend(self):
         """ wyświetlanie małego okna z opisem kolorów NER """
         leg_win = tk.Toplevel(self.root)
-        leg_win.title("Legenda NER")
+        leg_win.title(self.t["leg_win_title"])
         leg_win.geometry("550x240")
         leg_win.resizable(False, False)
         leg_win.transient(self.root)
@@ -698,14 +809,14 @@ class ManuscriptEditor:
         container = ttk.Frame(leg_win, padding=15)
         container.pack(fill=BOTH, expand=True)
 
-        ttk.Label(container, text="Kategorie nazw własnych:",
+        ttk.Label(container, text=self.t["label_ner_category"],
                   font=("Segoe UI", 10, "bold")).pack(pady=(0, 10))
 
         # definicje opisów dla kategorii
         descriptions = {
-            "PERS": "Osoby (tytuły + imiona, nazwiska, narody)",
-            "LOC": "Geografia (miejsca, majątki, rzeki, kraje)",
-            "ORG": "Organizacje (urzędy, instytucje, parafie, stowarzyszenia)"
+            "PERS": self.t["desc_ner_pers"],
+            "LOC": self.t["desc_ner_loc"],
+            "ORG": self.t["desc_ner_org"]
         }
 
         for cat, color in self.category_colors.items():
@@ -721,8 +832,9 @@ class ManuscriptEditor:
             ttk.Label(row, text=descriptions.get(cat, ""), font=("Segoe UI", 8)).pack(side=LEFT)
 
         # przycisk zamknięcia okna
-        ttk.Button(container, text="Zamknij", command=leg_win.destroy,
-                   bootstyle="secondary-link").pack(side=BOTTOM, pady=(10, 0))
+        btn_leg_close = ttk.Button(container, text=self.t["btn_leg_close"], command=leg_win.destroy,
+                   bootstyle="secondary-link")
+        btn_leg_close.pack(side=BOTTOM, pady=(10, 0))
 
 
     def clear_all_annotations(self):
@@ -852,7 +964,7 @@ class ManuscriptEditor:
                     return
 
             except Exception as e:
-                print(f"Błąd wczytania metadanych NER: {e}")
+                print(self.t["msg_ner_metadata_error"] + f": {e}")
 
         # wywołanie AI jeżeli brak pliku json z metadanymi
         # suma kontrolna przekazywana do wątku, w celu zapisu w json po analizie AI
@@ -924,7 +1036,7 @@ Zwróć wynik WYŁĄCZNIE jako JSON w formacie:
 
                 self.root.after(0, self._apply_ner_categories, entities_dict)
         except Exception as e:
-            print(f"Błąd NER: {e}")
+            print(self.t["msg_ner_error"] + f": {e}")
         finally:
             self.root.after(0, lambda: self.btn_ner.config(state="normal"))
 
@@ -962,7 +1074,7 @@ Zwróć wynik WYŁĄCZNIE jako JSON w formacie:
             with open(json_path, 'w', encoding='utf-8') as f:
                 json.dump(cache_data, f, ensure_ascii=False, indent=4)
         except Exception as e:
-            print(f"Błąd zapisu metadanych w pliku *.json: {e}")
+            print(self.t["msg_ner_json_error"] + f": {e}")
 
 
     def _apply_ner_categories(self, entities_dict):
@@ -1105,7 +1217,7 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
                 self.root.after(0, self._draw_boxes_only, coordinates_data)
 
         except Exception as e:
-            print(f"Błąd BOX: {e}")
+            print(self.t["msg_box_error"] + f": {e}")
         finally:
             self.root.after(0, lambda: self.btn_box.config(state="normal", text="BOX"))
 
@@ -1275,7 +1387,7 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
                         json.dump(cache_data, f, ensure_ascii=False, indent=4)
 
                 except Exception as e:
-                    print(f"Błąd zapisu JSON: {e}")
+                    print(self.t["msg_json_save_error"] + f": {e}")
 
         # resetowanie stanu
         self.canvas.config(cursor="")
@@ -1314,7 +1426,7 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
 
                     #print(f"Usunięto ramkę dla: {removed_item.get('name')}")
             except Exception as e:
-                messagebox.showerror("Błąd", f"Nie udało się zaktualizować pliku JSON: {e}")
+                messagebox.showerror(self.t["msg_error_title"], self.t["msg_json_update_error"] + f": {e}")
 
 
     def _on_box_press(self, event, entity_tag):
@@ -1401,7 +1513,7 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
                             needs_generation = False
 
                 except Exception as e:
-                    print(f"Błąd odczytu cache TTS: {e}")
+                    print(self.t["msg_tts_cache_error"] + f": {e}")
 
             # generowanie pliku tylko jeśli to konieczne
             if needs_generation:
@@ -1420,7 +1532,7 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
                 self.root.after(100, self._check_audio_status)
 
         except Exception as e:
-            print(f"Błąd TTS: {e}")
+            print(self.t["msg_tts_error"] + f": {e}")
             self.root.after(0, self.stop_reading)
 
 
@@ -1465,6 +1577,20 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
         self.redraw_image()
 
 
+    def load_lang(self):
+        """ wczytywanie wersji językowych z pliku JSON """
+        localization_path = Path('..') / 'config' / self.local_file
+        if localization_path.exists():
+            try:
+                with open(localization_path, 'r', encoding='utf-8') as f:
+                    self.localization = json.load(f)
+                    for key, value in self.localization.items():
+                        self.languages.append(key)
+
+            except Exception as e:
+                print(self.t["msg_lang_file_error"] + f": {e}")
+
+
     def load_config(self):
         """ wczytywanie ustawień z pliku JSON """
         config_path = Path('..') / 'config' / self.config_file
@@ -1473,13 +1599,19 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
                 with open(config_path, 'r', encoding='utf-8') as f:
                     config = json.load(f)
                     self.font_size = config.get("font_size", 12)
-                    self.current_tts_lang_code = config.get("tts_lang", "pl") # wczytanie języka
+                    # wczytanie języka audio
+                    self.current_tts_lang_code = config.get("tts_lang", "pl")
+                    # wczytanie języka interfejsu
+                    self.current_lang = config.get("current_lang", "PL")
+                    # domyślny prompt
+                    self.default_prompt = config.get("default_prompt",
+                                                     "prompt_handwritten_pol_xx_century.txt")
 
-                    # optional api key in config file
+                    # opcjonalny api key w pliku config
                     if not self.api_key:
                         self.api_key = config.get("api_key", "")
             except Exception as e:
-                print(f"Błąd wczytywania pliku konfiguracyjnego: {e}")
+                print(self.t["msg_config_file_error"] + f": {e}")
 
 
     def save_config(self):
@@ -1489,10 +1621,15 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
                 config["font_size"] = self.font_size
+                config["tts_lang"] = self.current_tts_lang_code
+                config["current_lang"] = self.current_lang
+                config["default_prompt"] = self.default_prompt
         else:
             config = {
                 "font_size": self.font_size,
                 "tts_lang": self.current_tts_lang_code,
+                "current_lang": self.current_lang,
+                "default_prompt": self.default_prompt,
                 "api_key": ""
             }
 
@@ -1500,7 +1637,7 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(config, f)
         except Exception as e:
-            print(f"Błąd zapisu pliku konfiguracyjnego: {e}")
+            print(self.t["msg_save_config_file_error"] + f": {e}")
 
 
     def change_font_size(self, delta):
@@ -1533,22 +1670,27 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
         """ ładowanie zmiennych środowiskowych i promptu """
         load_dotenv()
 
-        self.api_key = os.environ.get("GEMINI_API_KEY")
+        if not self.api_key:
+            self.api_key = os.environ.get("GEMINI_API_KEY")
 
-        self.prompt_filename_var.set("Brak (wybierz plik)")
-
-        default_prompt = "prompt_handwritten_pol_xx_century.txt"
-        prompt_path = Path('..') / "prompt" / default_prompt
-        if os.path.exists(prompt_path):
-            try:
-                with open(prompt_path, 'r', encoding='utf-8') as f:
-                    self.prompt_text = f.read()
-                self.prompt_filename_var.set(f"{default_prompt}")
-                self.current_prompt_path = str(prompt_path)
-            except Exception as e:
-                messagebox.showerror("Błąd", f"Nie można wczytać {default_prompt}: {e}", parent=self.root)
+        if self.default_prompt:
+            self.prompt_filename_var.set(self.default_prompt)
         else:
-            messagebox.showerror("Przed użyciem Gemini wskaż plik z promptem.", str(e), parent=self.root)
+            self.prompt_filename_var.set("")
+
+        if self.default_prompt:
+            prompt_path = Path('..') / "prompt" / self.default_prompt
+            if os.path.exists(prompt_path):
+                try:
+                    with open(prompt_path, 'r', encoding='utf-8') as f:
+                        self.prompt_text = f.read()
+                    self.prompt_filename_var.set(f"{self.default_prompt}")
+                    self.current_prompt_path = str(prompt_path)
+                except Exception as e:
+                    messagebox.showerror(self.t["msg_error_title"],
+                                         self.t["msg_file_prompt_error"] + f" {self.default_prompt}: {e}", parent=self.root)
+            else:
+                messagebox.showerror(self.t["msg_prompt_file_missing"], str(e), parent=self.root)
 
 
     def select_folder(self):
@@ -1559,7 +1701,7 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
         initial_dir = os.getcwd() # domyślnie bieżący katalog
 
         folder_path = filedialog.askdirectory(
-            title="Wybierz folder ze skanami",
+            title=self.t["select_folder_title"],
             initialdir=initial_dir,
             parent=self.root
         )
@@ -1591,18 +1733,19 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
                 })
 
             if not self.file_pairs:
-                messagebox.showinfo("Info", "Brak skanów w folderze.", parent=self.root)
+                messagebox.showinfo("Info", self.t["scan_files_missing"], parent=self.root)
                 self.original_image = None
                 self.processed_image = None
                 self.canvas.delete("all")
                 self.text_area.delete(1.0, tk.END)
-                self.file_info_var.set("Brak plików")
+                self.file_info_var.set(self.t["scan_folder_empty"])
                 return
 
             self.current_index = 0
             self.load_pair(0)
         except Exception as e:
-            messagebox.showerror("Błąd", f"Nie można odczytać folderu: {e}", parent=self.root)
+            messagebox.showerror(self.t["msg_error_title"],
+                                 self.t["msg_folder_scan_error"] + f": {e}", parent=self.root)
 
 
     def load_pair(self, index):
@@ -1674,7 +1817,7 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
             self.canvas.create_image(self.img_x, self.img_y, image=self.tk_image, anchor="nw")
             self.zoom_label.config(text=f"Zoom: {int(self.scale * 100)}%")
         except Exception as e:
-            print(f"Błąd rysowania: {e}")
+            print(self.t["msg_redraw_error"] + f": {e}")
 
 
     def fit_to_width(self):
@@ -1702,7 +1845,8 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
             self.current_prompt_path = filepath
             return True
         except Exception as e:
-            messagebox.showerror("Błąd promptu", f"Nie można wczytać pliku:\n{e}", parent=self.root)
+            messagebox.showerror(self.t["msg_load_prompt_error_title"],
+                                 self.t["msg_load_prompt_error_text"] + f":\n{e}", parent=self.root)
             return False
 
 
@@ -1710,9 +1854,9 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
         """ okno dialogowe wyboru pliku promptu """
         prompt_path = Path('..') / 'prompt'
         filename = filedialog.askopenfilename(
-            title="Wybierz plik z promptem",
+            title=self.t["select_prompt_title"],
             initialdir=prompt_path,
-            filetypes=[("Pliki tekstowe", "*.txt"), ("Wszystkie pliki", "*.*")],
+            filetypes=[(self.t["file_type_text"], "*.txt"), (self.t["file_type_all"], "*.*")],
             parent=self.root
         )
 
@@ -1768,12 +1912,12 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
             # komunikat tylko jeśli nie jest to tryb silent
             if not silent:
                 original_text = self.file_info_var.get()
-                if "[ZAPISANO!]" not in original_text:
-                    self.file_info_var.set(original_text + " [ZAPISANO!]")
+                if self.t["text_saved"] not in original_text:
+                    self.file_info_var.set(original_text + " " + self.t["text_saved"])
                     self.root.after(1000, lambda: self.refresh_label_safely(self.current_index))
 
         except Exception as e:
-            messagebox.showerror("Błąd zapisu", str(e), parent=self.root)
+            messagebox.showerror(self.t["text_save_error"], str(e), parent=self.root)
 
 
     def refresh_label_safely(self, expected_index):
@@ -1832,13 +1976,14 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
         self.save_current_text(silent=True)
 
         if not self.file_pairs:
-            messagebox.showwarning("Brak danych", "Brak plików do eksportu.", parent=self.root)
+            messagebox.showwarning(self.t["msg_export_txt_missing_title"],
+                                   self.t["msg_export_txt_missing_text"], parent=self.root)
             return
 
         target_path = filedialog.asksaveasfilename(
-            title="Wybierz miejsce zapisu scalonego pliku TXT",
+            title=self.t["file_dialog_export_txt_title"],
             defaultextension=".txt",
-            filetypes=[("Plik tekstowy", "*.txt")],
+            filetypes=[(self.t["msg_export_txt_text"], "*.txt")],
             parent=self.root
         )
 
@@ -1861,11 +2006,13 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
             with open(target_path, 'w', encoding='utf-8') as f:
                 f.write(final_text)
 
-            messagebox.showinfo("Sukces",
-                                f"Utworzono plik:\n{os.path.basename(target_path)}", parent=self.root)
+            messagebox.showinfo(self.t["msg_csv_ok_title"],
+                                self.t["msg_export_txt_text"] + f":\n{os.path.basename(target_path)}",
+                                parent=self.root)
 
         except Exception as e:
-            messagebox.showerror("Błąd eksportu", f"Wystąpił błąd podczas zapisu:\n{e}", parent=self.root)
+            messagebox.showerror(self.t["msg_export_error_title"],
+                                 self.t["msg_export_error_text"] + f":\n{e}", parent=self.root)
 
 
     def export_all_data_docx(self):
@@ -1875,11 +2022,10 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
             return
 
         path = filedialog.asksaveasfilename(
-            title="Wybierz miejsce zapisu scalonego pliku DOCX",
+            title=self.t["file_dialog_export_docx_title"],
             defaultextension=".docx",
-            filetypes=[("dokument Word", "*.docx")],
+            filetypes=[(self.t["file_type_docx"], "*.docx")],
             parent=self.root)
-
 
         if not path:
             return
@@ -1911,11 +2057,12 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
 
             doc.save(path)
 
-            messagebox.showinfo("Sukces",
-                                f"Utworzono plik DOCX:\n{os.path.basename(path)}", parent=self.root)
+            messagebox.showinfo(self.t["msg_csv_ok_title"],
+                                self.t["msg_export_docx_text"] + f":\n{os.path.basename(path)}",
+                                parent=self.root)
 
         except Exception as e:
-            messagebox.showerror("Błąd eksportu", str(e), parent=self.root)
+            messagebox.showerror(self.t["msg_export_error_title"], str(e), parent=self.root)
 
 
     def on_close(self):
@@ -1999,22 +2146,24 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
     def open_batch_dialog(self):
         """ otwiera okno dialogowe do przetwarzania seryjnego """
         if self.is_transcribing:
-            messagebox.showwarning("Uwaga", "Trwa przetwarzanie. Poczekaj na zakończenie.", parent=self.root)
+            messagebox.showwarning(self.t["msg_warning"],
+                                   self.t["msg_batch_warning_text"], parent=self.root)
             return
 
         if not self.file_pairs:
-            messagebox.showinfo("Brak plików", "Brak plików do przetworzenia.", parent=self.root)
+            messagebox.showinfo(self.t["msg_missing_files"],
+                                self.t["msg_missing_files_text"], parent=self.root)
             return
 
         # tworzenie okna dialogowego
         batch_win = tk.Toplevel(self.root)
-        batch_win.title("Przetwarzanie Seryjne")
+        batch_win.title(self.t["batch_win_title"])
         batch_win.geometry("700x700")
         batch_win.transient(self.root)
 
         # nagłówek
-        ttk.Label(batch_win, text="Wybierz pliki do transkrypcji:", font=("Segoe UI", 12, "bold")).pack(pady=10)
-        ttk.Label(batch_win, text="Zaznaczono domyślnie pliki bez transkrypcji lub puste.",
+        ttk.Label(batch_win, text=self.t["batch_label_text"], font=("Segoe UI", 12, "bold")).pack(pady=10)
+        ttk.Label(batch_win, text=self.t["batch_label_info"],
                   bootstyle="secondary", font=("Segoe UI", 9)).pack(pady=(0, 10))
 
         # kontener na listę z przewijaniem
@@ -2032,12 +2181,12 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
 
             if not os.path.exists(txt_path):
                 should_select = True
-                status_text = "(brak txt)"
+                status_text = self.t["batch_status_text1"]
             elif os.path.getsize(txt_path) == 0:
                 should_select = True
-                status_text = "(pusty plik)"
+                status_text = self.t["batch_status_text2"]
             else:
-                status_text = "(gotowy)"
+                status_text = self.t["batch_status_text3"]
 
             var = tk.BooleanVar(value=should_select)
             self.batch_vars.append((idx, var))
@@ -2054,7 +2203,7 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
         btn_panel.pack(fill=X, side=BOTTOM)
 
         # logi postępu
-        self.batch_log_label = ttk.Label(batch_win, text="Oczekiwanie na start...", bootstyle="inverse-secondary")
+        self.batch_log_label = ttk.Label(batch_win, text=self.t["batch_log_label"], bootstyle="inverse-secondary")
         self.batch_log_label.pack(fill=X, side=BOTTOM, padx=10)
 
         self.batch_progress = ttk.Progressbar(batch_win, mode='determinate', bootstyle="success-striped")
@@ -2072,7 +2221,7 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
         def start_batch():
             selected_indices = [idx for idx, var in self.batch_vars if var.get()]
             if not selected_indices:
-                messagebox.showwarning("Info", "Nie wybrano żadnych plików.", parent=batch_win)
+                messagebox.showwarning("Info", self.t["batch_no_files_selected"], parent=batch_win)
                 return
 
             # blokada przycisków
@@ -2084,10 +2233,13 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
             thread.daemon = True
             thread.start()
 
-        ttk.Button(btn_panel, text="Zaznacz wszystkie", command=select_all, bootstyle="outline-secondary").pack(side=LEFT, padx=5)
-        ttk.Button(btn_panel, text="Odznacz wszystkie", command=select_none, bootstyle="outline-secondary").pack(side=LEFT, padx=5)
+        ttk.Button(btn_panel, text=self.t["batch_select_all"], command=select_all,
+                   bootstyle="outline-secondary").pack(side=LEFT, padx=5)
+        ttk.Button(btn_panel, text=self.t["batch_unselect_all"], command=select_none,
+                   bootstyle="outline-secondary").pack(side=LEFT, padx=5)
 
-        btn_start = ttk.Button(btn_panel, text="URUCHOM PRZETWARZANIE", command=start_batch, bootstyle="danger")
+        btn_start = ttk.Button(btn_panel, text=self.t["btn_start"], command=start_batch,
+                               bootstyle="danger")
         btn_start.pack(side=RIGHT, padx=5)
 
 
@@ -2107,7 +2259,7 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
 
             # aktualizacja GUI
             progress_pct = (i / total) * 100
-            msg = f"Przetwarzanie [{i+1}/{total}]: {pair['name']}..."
+            msg = self.t["batch_process_text"] + f" [{i+1}/{total}]: {pair['name']}..."
 
             self.root.after(0, lambda m=msg, v=progress_pct: self._update_batch_ui(m, v))
 
@@ -2121,16 +2273,16 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
 
             except Exception as e:
                 errors += 1
-                print(f"Błąd przy pliku {pair['name']}: {e}")
+                print(self.t["batch_worker_file_error"] + f" {pair['name']}: {e}")
 
         self.is_transcribing = False
 
         # zakończono
         if window.winfo_exists():
-            final_msg = f"Zakończono! Przetworzono: {total}. Błędy: {errors}."
+            final_msg = self.t["batch_final_msg1"] + f": {total}. " + self.t["batch_final_msg2"] + f": {errors}."
             self.root.after(0, lambda: self._update_batch_ui(final_msg, 100))
             self.root.after(0, lambda: btn_start.config(state="normal"))
-            self.root.after(0, lambda: messagebox.showinfo("Koniec", final_msg, parent=window))
+            self.root.after(0, lambda: messagebox.showinfo(self.t["batch_final_msg_title"], final_msg, parent=window))
 
             # odświeżanie widok w głównym oknie (jeśli aktualnie wyświetlany plik był zmieniony)
             self.root.after(0, lambda: self.load_pair(self.current_index))
@@ -2189,20 +2341,20 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
             return
 
         if not self.prompt_text:
-            messagebox.showerror("Błąd konfiguracji",
-                                 "Brak promptu.",
+            messagebox.showerror(self.t["prompt_config_error1"],
+                                 self.t["prompt_config_error2"],
                                  parent=self.root)
             return
 
         if not self.api_key:
-            messagebox.showerror("Błąd konfiguracji",
-                                 "Brak klucza GEMINI_API_KEY w pliku .env lub w config.json",
+            messagebox.showerror(self.t["apikey_config_error1"],
+                                 self.t["apikey_config_error2"],
                                  parent=self.root)
             return
 
         # blokada interfejsu
         self.is_transcribing = True
-        self.btn_ai.config(state="disabled", text="Przetwarzanie...")
+        self.btn_ai.config(state="disabled", text=self.t["btn_ai_process"])
         self.text_area.config(state="disabled") # bg="#222222" ?
         self.progress_bar.pack(fill=X, pady=(0, 10), before=self.editor_frame)
         self.progress_bar.start(10)
@@ -2286,12 +2438,12 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
         if success:
             # zapisywanie finalnej wersji po zakończeniu strumieniowania
             self.save_current_text(True)
-            messagebox.showinfo("Sukces",
-                                "Transkrypcja zakończona pomyślnie.",
+            messagebox.showinfo(self.t["msg_csv_ok_title"],
+                                self.t["msg_transcription_ok"],
                                 parent=self.root)
             self.root.focus_set()
         else:
-            messagebox.showerror("Błąd transkrypcji",
+            messagebox.showerror(self.t["msg_transcription_error_title"],
                                  f"Info:\n{content}",
                                  parent=self.root)
             self.root.focus_set()
@@ -2300,12 +2452,13 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
     def edit_current_prompt(self):
         """ Otwiera okno edycji aktualnego promptu """
         if not self.current_prompt_path or not os.path.exists(self.current_prompt_path):
-            messagebox.showwarning("Brak pliku promptu", "Przed edycją należy wybrać plik promptu.", parent=self.root)
+            messagebox.showwarning(self.t["msg_edit_prompt_error_title"],
+                                   self.t["msg_edit_prompt_error_text"], parent=self.root)
             return
 
         # okno edytora
         edit_win = tk.Toplevel(self.root)
-        edit_win.title(f"Edycja: {os.path.basename(self.current_prompt_path)}")
+        edit_win.title(self.t["edit_win_title"] + f": {os.path.basename(self.current_prompt_path)}")
         edit_win.geometry("850x600")
         edit_win.transient(self.root)
 
@@ -2317,22 +2470,27 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
             """ zapis zmodyfikowanego promptu na dysku """
             new_content = txt_edit.get(1.0, tk.END).strip()
             if not new_content:
-                messagebox.showwarning("Błąd", "Prompt nie może być pusty.", parent=edit_win)
+                messagebox.showwarning(self.t["msg_error_title"],
+                                       self.t["msg_save_prompt_empty"],
+                                       parent=edit_win)
                 return
 
             try:
                 with open(self.current_prompt_path, 'w', encoding='utf-8') as f:
                     f.write(new_content)
                 self.prompt_text = new_content
-                messagebox.showinfo("Zapisano", "Zmiany w prompcie zostały zapisane.", parent=edit_win)
+                messagebox.showinfo(self.t["msg_save_prompt_title"],
+                                    self.t["msg_save_prompt_text"],
+                                    parent=edit_win)
                 edit_win.destroy()
             except Exception as e:
-                messagebox.showerror("Błąd zapisu", str(e), parent=edit_win)
+                messagebox.showerror(self.t["msg_save_prompy_error_title"],
+                                     str(e), parent=edit_win)
 
         def restore_from_file():
             """ przywrócenie pierwotnej wersji promptu z pliku """
-            if messagebox.askyesno("Potwierdzenie",
-                                   "Wczytać treść promptu z pliku i zastąpić bieżącą zawartość edytora?",
+            if messagebox.askyesno(self.t["msg_prompt_restore_title"],
+                                   self.t["msg_prompt_restore_text"],
                                    parent=edit_win):
                 try:
                     with open(self.current_prompt_path, 'r', encoding='utf-8') as f:
@@ -2340,15 +2498,16 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
                     txt_edit.delete(1.0, tk.END)
                     txt_edit.insert(tk.END, content)
                 except Exception as e:
-                    messagebox.showerror("Błąd", f"Nie udało się wczytać pliku: {e}", parent=edit_win)
+                    messagebox.showerror(self.t["msg_error_title"],
+                                         self.t["msg_prompt_restore_error"] + f": {e}", parent=edit_win)
 
         def on_close_prompt_edit():
             """ funkcja sprawdzająca zmiany przy zamykaniu okna """
             current_content = txt_edit.get(1.0, tk.END).strip()
             # porównanie z tekstem zapisanym w pamięci aplikacji
             if current_content != self.prompt_text.strip():
-                if messagebox.askyesno("Niezapisane zmiany",
-                                       "Wprowadzone zmiany nie zostały zapisane. Czy na pewno chcesz zamknąć okno i utracić zmiany?",
+                if messagebox.askyesno(self.t["msg_on_close_title"],
+                                       self.t["msg_on_close_text"],
                                        parent=edit_win):
                     edit_win.destroy()
             else:
@@ -2357,11 +2516,12 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
         edit_win.protocol("WM_DELETE_WINDOW", on_close_prompt_edit)
 
         # przycisk zapisu
-        btn_save = ttk.Button(btn_frame, text="Zapisz", command=save_prompt_changes, bootstyle="success")
+        btn_save = ttk.Button(btn_frame, text=self.t["btn_save_prompt"],
+                              command=save_prompt_changes, bootstyle="success")
         btn_save.pack(side=RIGHT, padx=20)
 
         # przycisk przywracania z dysku
-        btn_restore = ttk.Button(btn_frame, text="Przywróć z pliku",
+        btn_restore = ttk.Button(btn_frame, text=self.t["btn_restore_prompt"],
                                  command=restore_from_file, bootstyle="outline-secondary")
         btn_restore.pack(side=LEFT, padx=20)
 
