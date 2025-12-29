@@ -14,7 +14,7 @@ The Gemini Pro 3 model is used for transcription, the Gemini Flash model is used
   - **Creating transcripts using the LLM model** (Gemini Pro 3, requires internet access) for the current scan or scan series. For scan series, the application displays all scans in the viewed directory and selects those that do not yet have a txt transcript file or that have an empty transcript file. This selection can, of course, be changed.
   - To perform transcription, you can use one of the **predefined prompts** (prompts for documents in Polish are currently available), or you can prepare your own prompt.
   - Transcription files are automatically saved when moving to the next/previous file; you can also force saving by pressing the SAVE button.
-  - Transcriptions can be saved in a **bulk txt file** or in a **docx file**. For docx files, the application also concatenates broken words and lines into paragraphs. 
+  - Transcriptions can be saved in a **bulk txt file** or in a **docx file**. For docx files, the application also concatenates broken words and lines into paragraphs. Transcriptions can also be saved in **TEI-XML** format. 
   - To facilitate verification of transcription accuracy, the application allows you to pan the scan (left mouse button), **zoom in/out** (mouse scroll wheel), and display a **magnifying glass** window at a selected location (right mouse button). 
   - Simple **filters** can be applied to scans: contrast enhancement and image inversion.
   - A feature that aids verification is the ability to **read the transcript aloud (TTS reader)**, this feature requires internet access.
@@ -53,6 +53,7 @@ List of buttons:
   - Read a series of scans with Gemini
   - Save the read text for all files in a merged txt file
   - Save the read text for all files in a merged docx file
+  - Save the read text for all files in a TEI-XML file
   - Go to the next file
   - Go to the last file
 
@@ -93,7 +94,9 @@ Highlighting of entity names in the transcription text:
 
 ![Screen](/doc/highlighting_entity_names.jpg)
 
-BOX - experimental function for marking entity names in the scan. The names are marked with frames, and the name read by the model is placed above the frame (on yellow background). This allows you to quickly compare the name with the actual content of the scan. See the screenshot below.
+Transcription errors prepared by the LLM model often concern proper names; to make finding them easier, an experimental BOX function was prepared - for marking entity names in the scan. The names are marked with frames, and the name read by the model is placed above the frame. This allows you to quickly compare the name with the actual content of the scan. See the screenshot below.
+
+Automatic marking isn't perfect, so it's possible to adjust the created frames: by grabbing the frame with the left mouse button, you can move it, and you can also adjust the frame size—the lower right corner of the frame is a handle that allows you to resize it. The new position or size is automatically saved when you release the mouse button. However, it's important to remember that the main purpose of this feature is to indicate (even inaccurately) the position of the proper name for visual verification of transcription accuracy.
 
 ![Screen](/doc/entity_names_on_scan.jpg)
 

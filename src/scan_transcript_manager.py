@@ -7,6 +7,7 @@ import threading
 import hashlib
 from datetime import datetime
 from pathlib import Path
+import xml.sax.saxutils as saxutils
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk, ImageOps, ImageEnhance
@@ -448,6 +449,12 @@ class ManuscriptEditor:
                    bootstyle="info")
         self.btn_docx.pack(side=LEFT, fill=X, expand=True, padx=5)
 
+        self.btn_tei = ttk.Button(self.toolbar,
+                   text="TEI",
+                   command=self.export_to_tei_xml,
+                   bootstyle="info")
+        self.btn_tei.pack(side=LEFT, fill=X, expand=True, padx=5)
+
         self.btn_last = ttk.Button(self.toolbar,
                    text=">|",
                    command=self.last_file,
@@ -521,6 +528,7 @@ class ManuscriptEditor:
         self.btn_seria_tooltip = ToolTip(self.btn_seria, self.t["tt_btn_seria"])
         self.btn_txt_tooltip = ToolTip(self.btn_txt, self.t["tt_btn_txt"])
         self.btn_docx_tooltip = ToolTip(self.btn_docx, self.t["tt_btn_docx"])
+        self.btn_tei_tooltip = ToolTip(self.btn_tei, self.t["tt_btn_tei"])
         self.btn_save_tooltip = ToolTip(self.btn_save, self.t["tt_btn_save"])
         self.btn_first_tooltip = ToolTip(self.btn_first, self.t["tt_btn_first"])
         self.btn_last_tooltip = ToolTip(self.btn_last, self.t["tt_btn_last"])
@@ -533,6 +541,129 @@ class ManuscriptEditor:
         self.lang_combobox_tooltip = ToolTip(self.lang_combobox, self.t["tt_lang_combobox"])
 
         self.select_folder()
+
+
+    def export_to_tei_xml(self):
+        """ eksportuje wszystkich transkrypcji z bieżącego folderu do formatu
+            TEI-XML z tagowaniem NER
+        """
+        if not self.file_pairs:
+            return
+
+        target_path = filedialog.asksaveasfilename(
+            title=self.t["filedialog_tei_title"],
+            defaultextension=".xml",
+            filetypes=[(self.t["filetype_xml"], "*.xml")],
+            parent=self.root
+        )
+        if not target_path:
+            return
+
+        try:
+            tei_content = []
+            # standardowy nagłówek TEI
+            tei_content.append('<?xml version="1.0" encoding="UTF-8"?>')
+            tei_content.append('<TEI xmlns="http://www.tei-c.org/ns/1.0">')
+            tei_content.append('  <teiHeader>')
+            tei_content.append('    <fileDesc>')
+            tei_content.append('      <titleStmt><title>Eksport z ScansAndTranscriptions</title></titleStmt>')
+            tei_content.append('      <publicationStmt><p>Wygenerowano automatycznie</p></publicationStmt>')
+            tei_content.append('      <sourceDesc><p>Transkrypcje skanów</p></sourceDesc>')
+            tei_content.append('    </fileDesc>')
+            tei_content.append('  </teiHeader>')
+            tei_content.append('  <text>')
+            tei_content.append('    <body>')
+
+            for pair in self.file_pairs:
+                if not os.path.exists(pair['txt']):
+                    continue
+
+                # wczytanie tekstu i metadanych NER
+                with open(pair['txt'], 'r', encoding='utf-8') as f:
+                    raw_text = f.read()
+
+                entities = {}
+                json_path = os.path.splitext(pair['txt'])[0] + ".json"
+                if os.path.exists(json_path):
+                    with open(json_path, 'r', encoding='utf-8') as f:
+                        entities = json.load(f).get("entities", {})
+
+                # przetwarzanie tekstu: sklejanie wierszy i słów
+                processed_text = self._prepare_text_for_tei(raw_text)
+
+                # tagowanie nazw własnych (Ucieczka znaków XML przed tagowaniem)
+                tagged_text = self._tag_entities_tei(processed_text, entities)
+
+                # dodanie strony jako akapitu lub sekcji
+                tei_content.append(f'      <div type="page" n="{pair["name"]}">')
+                for paragraph in tagged_text.split('\n\n'):
+                    if paragraph.strip():
+                        tei_content.append(f'        <p>{paragraph.strip()}</p>')
+                tei_content.append('      </div>')
+
+            tei_content.append('    </body>')
+            tei_content.append('  </text>')
+            tei_content.append('</TEI>')
+
+            with open(target_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(tei_content))
+
+            messagebox.showinfo(self.t["msg_csv_ok_title"],
+                                self.t["msg_xml_info_text"] + f":\n{os.path.basename(target_path)}")
+
+        except Exception as e:
+            messagebox.showerror(self.t["msg_xml_error_title"],
+                                 self.t["msg_xml_error_text"] + f": {e}")
+
+
+    def _prepare_text_for_tei(self, text):
+        """ łączy rozbite słowa i wiersze w logiczne akapity """
+        lines = text.splitlines()
+        joined_text = ""
+        for line in lines:
+            line = line.strip()
+            if not line:
+                joined_text += "\n\n" # Nowy akapit
+            elif joined_text.endswith("-"):
+                joined_text = joined_text[:-1] + line
+            else:
+                joined_text += (" " if joined_text and not joined_text.endswith("\n\n") else "") + line
+        return joined_text
+
+
+    def _tag_entities_tei(self, text, entities):
+        """ zamienia nazwy własne na tagi TEI (persName, placeName, orgName) """
+        # Mapowanie kategorii na tagi TEI
+        tag_map = {
+            "PERS": "persName",
+            "LOC": "placeName",
+            "ORG": "orgName"
+        }
+
+        # znaki specjalne XML (&, <, >)
+        escaped_text = saxutils.escape(text)
+
+        # lista wszystkich nazw do zastąpienia, sortowana od najdłuższych
+        # (aby uniknąć błędnego tagowania fragmentów nazw, np. "Jan" w "Jan Kowalski")
+        all_names = []
+        for cat, names in entities.items():
+            if cat in tag_map:
+                for name in names:
+                    all_names.append((name, tag_map[cat]))
+
+        all_names.sort(key=lambda x: len(x[0]), reverse=True)
+
+        for name, tag in all_names:
+            escaped_name = saxutils.escape(name)
+            # regex z word boundary (\b), aby nie tagować środków innych słów
+            pattern = re.compile(re.escape(escaped_name), re.IGNORECASE)
+            escaped_text = pattern.sub(f'<{tag}>{escaped_name}</tag>', escaped_text)
+
+        # tag zamknięcia (zamiast generycznego </tag>)
+        for _, tag in all_names:
+            escaped_text = escaped_text.replace('</tag>', f'</{tag}>')
+
+        return escaped_text
 
 
     def change_app_language(self, event):
