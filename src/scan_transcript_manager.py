@@ -544,8 +544,8 @@ class ManuscriptEditor:
 
 
     def export_to_tei_xml(self):
-        """ eksportuje wszystkich transkrypcji z bieżącego folderu do formatu
-            TEI-XML z tagowaniem NER
+        """ eksportuje transkrypcje z bieżącego folderu do formatu
+            TEI-XML z tagowaniem NER (jeżeli jest)
         """
         if not self.file_pairs:
             return
@@ -561,7 +561,8 @@ class ManuscriptEditor:
 
         try:
             tei_content = []
-            # standardowy nagłówek TEI
+
+            # prosty nagłówek TEI
             tei_content.append('<?xml version="1.0" encoding="UTF-8"?>')
             tei_content.append('<TEI xmlns="http://www.tei-c.org/ns/1.0">')
             tei_content.append('  <teiHeader>')
@@ -588,10 +589,10 @@ class ManuscriptEditor:
                     with open(json_path, 'r', encoding='utf-8') as f:
                         entities = json.load(f).get("entities", {})
 
-                # przetwarzanie tekstu: sklejanie wierszy i słów
+                # przygotowanie tekstu: sklejanie wierszy i słów
                 processed_text = self._prepare_text_for_tei(raw_text)
 
-                # tagowanie nazw własnych (Ucieczka znaków XML przed tagowaniem)
+                # tagowanie nazw własnych
                 tagged_text = self._tag_entities_tei(processed_text, entities)
 
                 # dodanie strony jako akapitu lub sekcji
@@ -617,13 +618,13 @@ class ManuscriptEditor:
 
 
     def _prepare_text_for_tei(self, text):
-        """ łączy rozbite słowa i wiersze w logiczne akapity """
+        """ łączenie podzielonych słów i wierszy w logiczne akapity """
         lines = text.splitlines()
         joined_text = ""
         for line in lines:
             line = line.strip()
             if not line:
-                joined_text += "\n\n" # Nowy akapit
+                joined_text += "\n\n" # nowy akapit
             elif joined_text.endswith("-"):
                 joined_text = joined_text[:-1] + line
             else:
@@ -632,11 +633,11 @@ class ManuscriptEditor:
 
 
     def _tag_entities_tei(self, text, entities):
-        """ zamienia nazwy własne na tagi TEI (persName, placeName, orgName) """
-        # Mapowanie kategorii na tagi TEI
+        """ otaczanie nazw własnych tagami TEI (persName, placeName, orgName) """
+        # mapowanie kategorii na tagi TEI
         tag_map = {
             "PERS": "persName",
-            "LOC": "placeName",
+            "LOC": "placeName",# LOC jest nieco byt ogólne dla placeName, mogą tu być kraje, państwa itp.
             "ORG": "orgName"
         }
 
@@ -659,7 +660,7 @@ class ManuscriptEditor:
             pattern = re.compile(re.escape(escaped_name), re.IGNORECASE)
             escaped_text = pattern.sub(f'<{tag}>{escaped_name}</tag>', escaped_text)
 
-        # tag zamknięcia (zamiast generycznego </tag>)
+        # tag zamknięcia
         for _, tag in all_names:
             escaped_text = escaped_text.replace('</tag>', f'</{tag}>')
 
