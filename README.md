@@ -8,19 +8,20 @@ Since the application uses models via API, their use is subject to a fee, in acc
 
 The Gemini Pro 3 model is used for transcription, the Gemini Flash model is used for searching for proper names, and the Gemini Pro 3 Image model (also known as Nano Banana Pro) is used for locating proper names on a scan.  The application can prepare transcriptions for a single image or a series of files. The Gemini API key should be stored in the `.env` file as the `GEMINI_API_KEY` environment variable (or in the `config/config.json` file under the `api_key` field).
 
-Application Features:
-  - Browsing scans and transcriptions. The application assumes that the specified directory contains scan files and transcript files with identical names but with the *.txt extension. If a text file is missing, the application will automatically create an empty one.
-  - Creating transcripts using the LLM model (Gemini Pro 3, requires internet access) for the current scan or scan series. For scan series, the application displays all scans in the viewed directory and selects those that do not yet have a txt transcript file or that have an empty transcript file. This selection can, of course, be changed.
-  - To perform transcription, you can use one of the predefined prompts (prompts for documents in Polish are currently available), or you can prepare your own prompt.
+## Application Features:
+
+  - **Browsing scans and transcriptions**. The application assumes that the specified directory contains scan files and transcript files with identical names but with the *.txt extension. If a text file is missing, the application will automatically create an empty one.
+  - **Creating transcripts using the LLM model** (Gemini Pro 3, requires internet access) for the current scan or scan series. For scan series, the application displays all scans in the viewed directory and selects those that do not yet have a txt transcript file or that have an empty transcript file. This selection can, of course, be changed.
+  - To perform transcription, you can use one of the **predefined prompts** (prompts for documents in Polish are currently available), or you can prepare your own prompt.
   - Transcription files are automatically saved when moving to the next/previous file; you can also force saving by pressing the SAVE button.
-  - Transcriptions can be saved in a bulk txt file or in a docx file. For docx files, the application also concatenates broken words and lines into paragraphs. 
-  - To facilitate verification of transcription accuracy, the application allows you to pan the scan (left mouse button), zoom in/out (mouse scroll wheel), and display a magnifying glass window at a selected location (right mouse button). 
-  - Simple filters can be applied to scans: contrast enhancement and image inversion.
-  - A feature that aids verification is the ability to read the transcript aloud (TTS reader), this feature requires internet access.
+  - Transcriptions can be saved in a **bulk txt file** or in a **docx file**. For docx files, the application also concatenates broken words and lines into paragraphs. 
+  - To facilitate verification of transcription accuracy, the application allows you to pan the scan (left mouse button), **zoom in/out** (mouse scroll wheel), and display a **magnifying glass** window at a selected location (right mouse button). 
+  - Simple **filters** can be applied to scans: contrast enhancement and image inversion.
+  - A feature that aids verification is the ability to **read the transcript aloud (TTS reader)**, this feature requires internet access.
   - Ability to adjust the font size in the transcription field.
-  - Due to the fact that transcription errors quite often appear in proper names (people, places, institutions), the option to highlight such words (NER button) has been added so that special attention can be paid to them during transcription verification. Experimental function (BOX button) for marking entity names in the scan. The names are marked with frames, and the name from transcription is placed above the frame, for quick assessment of transcription accuracy. The frames for entity names can be adjusted in terms of size and position. The list of found entity names can be exported to a CSV file for further use.
-  - The application records the cost of all API calls for the current catalog, with information about the date, name of the model used, number of tokens used (input, output), cost of the call, and summarizes the cost for the entire current scan catalog.
-  - The user interface supports multiple language versions. Currently, two languages are defined: PL and EN (definitions in the localization.json file). 
+  - Due to the fact that transcription errors quite often appear in proper names (people, places, institutions), the option to **highlight** such words (**NER** button) has been added so that special attention can be paid to them during transcription verification. Experimental function (BOX button) for **automatic marking entity names in the scan**. The names are marked with frames, and the name from transcription is placed above the frame, for quick assessment of transcription accuracy. The frames for entity names can be adjusted in terms of size and position. The list of found **entity names can be exported to a CSV file** for further use.
+  - The application **records the cost of all API calls** for the current catalog, with information about the date, name of the model used, number of tokens used (input, output), cost of the call, and summarizes the cost for the entire current scan catalog.
+  - The user interface supports **multiple language versions**. Currently, two languages are defined: **PL** and **EN** (definitions in the localization.json file). 
 
 
 ## Screenshots and description:
