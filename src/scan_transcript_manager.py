@@ -5,6 +5,7 @@ import json
 import csv
 import threading
 import hashlib
+import difflib
 from datetime import datetime
 from pathlib import Path
 import xml.sax.saxutils as saxutils
@@ -340,6 +341,10 @@ class ManuscriptEditor:
                                   bootstyle="success-outline", width=4, padding=2)
         self.btn_log.pack(side=LEFT, padx=2)
 
+        self.btn_verify = ttk.Button(ai_tools, text="FIX", command=self.start_verification,
+                                     bootstyle="success-outline", width=4, padding=2)
+        self.btn_verify.pack(side=LEFT, padx=2)
+
         # prawa strona wiersza 2: lektor (TTS)
         tts_tools = ttk.Frame(self.header_row2)
         tts_tools.pack(side=RIGHT)
@@ -520,6 +525,8 @@ class ManuscriptEditor:
         self.btn_cls_tooltip = ToolTip(self.btn_cls, self.t["tt_btn_cls"])
         self.btn_leg_tooltip = ToolTip(self.btn_leg, self.t["tt_btn_leg"])
         self.btn_csv_tooltip = ToolTip(self.btn_csv, self.t["tt_btn_csv"])
+        self.btn_log_tooltip = ToolTip(self.btn_log, self.t["tt_btn_log"])
+        self.btn_verify_tooltip = ToolTip(self.btn_verify, self.t["tt_btn_verify"])
         self.btn_speak_tooltip = ToolTip(self.btn_speak, self.t["tt_btn_speak"])
         self.btn_stop_tooltip = ToolTip(self.btn_stop, self.t["tt_btn_stop"])
         self.btn_pause_tooltip = ToolTip(self.btn_pause, self.t["tt_btn_pause"])
@@ -541,6 +548,94 @@ class ManuscriptEditor:
         self.lang_combobox_tooltip = ToolTip(self.lang_combobox, self.t["tt_lang_combobox"])
 
         self.select_folder()
+
+
+    def start_verification(self):
+        """ uruchomienie procesu weryfikacji transkrypcji przez AI """
+        if not self.file_pairs or self.is_transcribing:
+            return
+
+        self.btn_verify.config(state="disabled", text="...")
+        img_path = self.file_pairs[self.current_index]['img']
+        current_text = self.text_area.get(1.0, tk.END).strip()
+
+        threading.Thread(target=self._verify_worker, args=(img_path, current_text), daemon=True).start()
+
+
+    def _verify_worker(self, img_path, original_text):
+        try:
+            client = genai.Client(api_key=self.api_key)
+            with open(img_path, 'rb') as f:
+                image_bytes = f.read()
+
+            prompt = """
+Otrzymasz skan dokumentu oraz jego wstępną transkrypcję.
+Twoim zadaniem jest zweryfikować tekst z obrazem i poprawić wszelkie błędy:
+1. Popraw literówki i błędnie odczytane słowa.
+2. Uzupełnij pominięte słowa.
+3. Zachowaj oryginalny układ wierszy.
+4. Nie dodawaj własnych komentarzy, zwróć TYLKO poprawiony tekst.
+"""
+
+            model = "gemini-3-pro-preview" # model do weryfikacji
+
+            generate_content_config = types.GenerateContentConfig(
+                temperature=0,
+                thinkingConfig=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW),
+                media_resolution=types.MediaResolution.MEDIA_RESOLUTION_HIGH,
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
+            )
+
+            response = client.models.generate_content(
+                model=model,
+                contents=[
+                    types.Part.from_text(text=prompt + "\nTranskrypcja: " + original_text),
+                    types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg')
+                ],
+                config=generate_content_config
+            )
+
+            if response.usage_metadata:
+                self.root.after(0, lambda: self._log_api_usage(model, response.usage_metadata))
+
+            if response.text:
+                fixed_text = response.text.strip()
+                # zapis do pliku tekstowego z rozszerzeniem *.fix
+                fix_path = os.path.splitext(self.file_pairs[self.current_index]['txt'])[0] + ".fix"
+                with open(fix_path, 'w', encoding='utf-8') as f:
+                    f.write(fixed_text)
+
+                self.root.after(0, lambda: self._apply_diff(original_text, fixed_text))
+
+        except Exception as e:
+            print("Błąd weryfikacji" + f": {e}")
+        finally:
+            self.root.after(0, lambda: self.btn_verify.config(state="normal", text="FIX"))
+
+
+    def _apply_diff(self, old_text, new_text):
+        """ podświetlenie różnic w edytorze na podstawie porównania tekstów """
+        # konfiguracja tagu dla zmian
+        self.text_area.tag_configure("diff_fix", background="#fc8686", foreground="black")
+
+        # SequenceMatcher do znalezienia różnic
+        s = difflib.SequenceMatcher(None, old_text, new_text)
+
+        messagebox.showinfo("Weryfikacja", "AI wygenerowało poprawki. Zmiany zostały zapisane w pliku .fix i podświetlone w edytorze.")
+
+        for tag, i1, i2, j1, j2 in s.get_opcodes():
+            if tag != 'equal':
+                start_idx = self._get_tk_index(old_text, i1)
+                end_idx = self._get_tk_index(old_text, i2)
+                self.text_area.tag_add("diff_fix", start_idx, end_idx)
+
+
+    def _get_tk_index(self, text, offset):
+        """ konwersja offsetu znaku na format 'linia.kolumna' dla Text widget """
+        lines = text[:offset].split('\n')
+        line = len(lines)
+        column = len(lines[-1])
+        return f"{line}.{column}"
 
 
     def export_to_tei_xml(self):
@@ -1146,7 +1241,7 @@ Zwróć wynik WYŁĄCZNIE jako JSON w formacie:
                 automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
             )
 
-            model = "gemini-flash-latest" # lub gemini-3-flash-preview
+            model = "gemini-3-pro-preview" # lub gemini-3-flash-preview
 
             response = client.models.generate_content(
                 model=model,

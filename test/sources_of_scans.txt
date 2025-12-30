@@ -41,3 +41,7 @@ Description: O skutecznym rad sposobie albo o utrzymywaniu ordynaryinych seymow.
 File: deklaracya_1766.jpg
 Address: https://polona2.pl/item/deklaracya-jmieniem-krola-jmci-pruskiego-przez-jego-ministra-pelnomocnego-zkonfederowaney,MTQ1MDU1NDQ5/0/#info:metadata
 Description: Deklaracya jmieniem krola jmci pruskiego przez jego ministra pełnomocnego zkonfederowaney Rzeczypospolitey na seymie roku 1766 uczyniona
+---
+File: smoluchowski_niem_1918.jpg
+Address: https://polona2.pl/item/papiery-i-korespondencja-dotyczace-wynalazku-i-patentow-prof-mariana-smoluchowskiego-z,ODczNDI3ODY/1/#info:metadata
+Description: Papiery i korespondencja dotyczące wynalazku i patentów prof. Mariana Smoluchowskiego z lat 1910-1918

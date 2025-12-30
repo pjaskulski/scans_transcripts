@@ -120,6 +120,10 @@ English **language version**:
 
 ![Screen](/doc/screen_english.jpg)
 
+Example of a manuscript in German (early 20th century):
+
+![Screen](/doc/screen_htr_ger.png)
+
 The "test" folder contains sample scans and transcripts: scans of manuscripts from the 18th, 19th and 20th centuries, scans of typescripts from the mid-20th century, scans of old prints from the 18th century - all in Polish.
 
 **Note**: access to the Gemini Pro 3 model via API is subject to a fee, as per the Google pricing page.
