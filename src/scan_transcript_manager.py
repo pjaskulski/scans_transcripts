@@ -1305,43 +1305,80 @@ Zwróć wynik WYŁĄCZNIE jako JSON w formacie:
 
 
     def _apply_ner_categories(self, entities_dict):
-        """ podświetlenie nazw własnych z podziałem na kolory i obsługą rozbitych słów """
+        """ podświetlenie nazw własnych z ulepszoną obsługą długich fraz i znaków interpunkcyjnych """
         # czyszczenie poprzednich tagów
         for tag in ["PERS", "LOC", "ORG"]:
             self.text_area.tag_remove(tag, "1.0", tk.END)
 
         for category, names in entities_dict.items():
-            for name in names:
-                # wzorzec regex, który pozwala znaleźć np. "Krak-ów" szukając "Kraków"
-                search_pattern = ""
-                name_len = len(name)
+            if not names:
+                continue
 
-                for i, char in enumerate(name):
-                    search_pattern += re.escape(char)
-                    # jeżeli to nie jest ostatni znak, dodaje elastyczne dopasowanie rozbić
-                    if i < name_len - 1:
-                        # opcjonalny myślnik, spacje i nową linię
-                        search_pattern += r"(?:-?\s*\n?\s*)"
+            # sortowanie nazwy od najdłuższych, aby uniknąć błędów przy zagnieżdżonych nazwach
+            sorted_names = sorted(names, key=len, reverse=True)
+
+            for name in sorted_names:
+                name = name.strip()
+                if len(name) < 2:
+                    continue
+
+                # budowa wzorca regex
+                parts = []
+                words = name.split()
+
+                for i, word in enumerate(words):
+                    word_pattern = ""
+                    for j, char in enumerate(word):
+                        word_pattern += re.escape(char)
+                        if j < len(word) - 1:
+                            word_pattern += r"(?:-?\s*\n?\s*)?"
+                    parts.append(word_pattern)
+
+                search_pattern = r"\s+".join(parts)
+                search_pattern = search_pattern.replace(r"\s+", r"(?:-?\s*[\s\n]+\s*)")
 
                 start_pos = "1.0"
                 while True:
                     match_count = tk.IntVar()
                     start_pos = self.text_area.search(search_pattern, start_pos,
-                                                     stopindex=tk.END, nocase=True,
-                                                     regexp=True, count=match_count)
+                                                    stopindex=tk.END, nocase=True,
+                                                    regexp=True, count=match_count)
                     if not start_pos:
                         break
 
-                    # koniec na podstawie faktycznej liczby znalezionych znaków
-                    end_pos = f"{start_pos}+{match_count.get()}c"
+                    # obliczanie końca
+                    end_pos = self.text_area.index(f"{start_pos}+{match_count.get()}c")
 
-                    # kolor odpowiedni dla kategorii
-                    self.text_area.tag_add(category, start_pos, end_pos)
+                    # nakładanie koloru
+                    self._apply_tag_excluding_newlines(category, start_pos, end_pos)
+                    #self.text_area.tag_add(category, start_pos, end_pos)
                     start_pos = end_pos
 
+        # widoczność przycisków
         if any(entities_dict.values()):
             self.btn_box.config(state="normal")
             self.btn_cls.config(state="normal")
+
+
+    def _apply_tag_excluding_newlines(self, tag_name, start, end):
+        """ funkcja nakładająca tag tylko na tekst, omijając znaki nowej linii """
+        curr = start
+        while self.text_area.compare(curr, "<", end):
+            # koniec bieżącej linii
+            line_end = self.text_area.index(f"{curr} lineend")
+
+            # ograniczenie, jeśli koniec linii jest dalej niż koniec dopasowania
+            if self.text_area.compare(line_end, ">", end):
+                line_end = end
+
+            # nakładanie tagu na fragment bieżącej linii
+            if self.text_area.compare(curr, "<", line_end):
+                self.text_area.tag_add(tag_name, curr, line_end)
+
+            # przejście do początku następnej linii
+            curr = self.text_area.index(f"{line_end} + 1c")
+            if not curr:
+                break
 
 
     def start_coordinates_analysis(self):
