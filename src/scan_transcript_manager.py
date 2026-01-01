@@ -1113,7 +1113,8 @@ Twoim zadaniem jest zweryfikować tekst z obrazem i poprawić wszelkie błędy:
         count = 0
         while True:
             # szukanie frazy (nocase=True dla ignorowania wielkości liter)
-            start_pos = self.text_area.search(query, start_pos, stopindex=tk.END, nocase=True)
+            start_pos = self.text_area.search(query, start_pos, stopindex=tk.END,
+                                              nocase=True)
             if not start_pos:
                 break
 
@@ -1309,6 +1310,9 @@ Zwróć wynik WYŁĄCZNIE jako JSON w formacie:
         # czyszczenie poprzednich tagów
         for tag in ["PERS", "LOC", "ORG"]:
             self.text_area.tag_remove(tag, "1.0", tk.END)
+
+        #czyszczenie ewentualnego podświetlenia wyników wyszukiwania
+        self.text_area.tag_remove("search_highlight", "1.0", tk.END)
 
         for category, names in entities_dict.items():
             if not names:
