@@ -570,11 +570,17 @@ class ManuscriptEditor:
 
             prompt = """
 Otrzymasz skan dokumentu oraz jego wstępną transkrypcję.
+
 Twoim zadaniem jest zweryfikować tekst z obrazem i poprawić wszelkie błędy:
 1. Popraw literówki i błędnie odczytane słowa.
 2. Uzupełnij pominięte słowa.
 3. Zachowaj oryginalny układ wierszy.
 4. Nie dodawaj własnych komentarzy, zwróć TYLKO poprawiony tekst.
+
+Pamiętaj o zasadach oznaczania niepewności:
+- Jeśli fragment (słowo lub litera) jest całkowicie nieczytelny (plama, zniszczenie), oznacz go jako: [nieczytelne].
+- Jeśli odczyt jest wątpliwy, ale masz przypuszczenie, zapisz je i dodaj znak zapytania w nawiasie, np.: [słowo?] lub słow[o?].
+- Jeśli w tekście występuje skreślenie, oznacz je jako: [skreślenie].
 """
 
             model = "gemini-3-pro-preview" # model do weryfikacji
@@ -1171,6 +1177,9 @@ Twoim zadaniem jest zweryfikować tekst z obrazem i poprawić wszelkie błędy:
 
         self.btn_ner.config(state="disabled")
 
+        self.progress_bar.pack(fill=X, pady=(0, 10), before=self.editor_frame)
+        self.progress_bar.start(10)
+
         current_checksum = self._calculate_checksum(text)
         json_path = self._get_ner_json_path()
 
@@ -1265,8 +1274,16 @@ Zwróć wynik WYŁĄCZNIE jako JSON w formacie:
                 self.root.after(0, self._apply_ner_categories, entities_dict)
         except Exception as e:
             print(self.t["msg_ner_error"] + f": {e}")
+            self.root.after(0, self._ner_finished)
         finally:
-            self.root.after(0, lambda: self.btn_ner.config(state="normal"))
+            self.root.after(0, self._ner_finished)
+
+
+    def _ner_finished(self):
+        """ aktualizacja GUI po zakończeniu pracy wątku """
+        self.progress_bar.stop()
+        self.progress_bar.pack_forget()
+        self.btn_ner.config(state="normal")
 
 
     def _save_ner_cache(self, entities=None, coordinates=None, checksum=None, tts_checksum=None):
