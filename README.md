@@ -57,7 +57,7 @@ List of buttons:
 
 ![Screen](/doc/toolbar.png)
 
-Below the list of buttons there is information with the name of the currently set prompt file, the buttons on the right allows you to change the prompt or edit prompt.
+Below the list of buttons there is information with the name of the currently set prompt file, the buttons on the right allows you to change the prompt, create new or edit an existing prompt. When creating a new prompt, the application suggests a template.
 
 If no transcription file exists for the current file, an empty file will be automatically created. Transcription files can be edited manually. In addition to saving via the 'SAVE' button, files are automatically saved when moving to the next/previous file and when exiting the application.
 

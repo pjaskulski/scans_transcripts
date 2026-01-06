@@ -292,6 +292,7 @@ class ManuscriptEditor:
                    bootstyle="outline-secondary", width=3, padding=2)
         self.btn_bgfont.pack(side=LEFT, padx=2)
 
+        # język interfejsu
         self.lang_sel = ttk.Combobox(font_tools, values=self.languages, width=5,
                                      state="readonly")
         self.lang_sel.set(self.current_lang)
@@ -302,7 +303,7 @@ class ManuscriptEditor:
         self.header_row2 = ttk.Frame(self.editor_frame)
         self.header_row2.pack(fill=X, padx=5, pady=2)
 
-        # lewa strona wiersza 2: analiza treści
+        # lewa strona wiersza 2: analiza treści, NER, BOX itp.
         ai_tools = ttk.Frame(self.header_row2)
         ai_tools.pack(side=LEFT)
 
@@ -473,6 +474,12 @@ class ManuscriptEditor:
                                         bootstyle="link-info", cursor="hand2", padding=0)
         self.btn_edit_prompt.pack(side=RIGHT, padx=5)
 
+        # przycisk nowego promptu
+        self.btn_new_prompt = ttk.Button(self.prompt_status_frame, text=self.t["btn_new_prompt"],
+                                        command=self.create_new_prompt,
+                                        bootstyle="link-success", cursor="hand2", padding=0)
+        self.btn_new_prompt.pack(side=RIGHT, padx=5)
+
         # skróty klawiszowe
         self.root.bind("<Control-s>", lambda e: self.save_current_text())
         self.root.bind("<Alt-Left>", lambda e: self.prev_file())
@@ -522,8 +529,62 @@ class ManuscriptEditor:
         self.btn_smfont_tooltip = ToolTip(self.btn_smfont, self.t["tt_btn_smfont"])
         self.btn_search_tooltip = ToolTip(self.btn_search, self.t["tt_btn_search"])
         self.btn_cancelsearch_tooltip = ToolTip(self.btn_cancelsearch, self.t["tt_btn_cancelsearch"])
+        self.btn_new_prompt_tooltip = ToolTip(self.btn_new_prompt, self.t["tt_btn_new_prompt"])
 
         self.select_folder()
+
+
+    def create_new_prompt(self):
+        """ nowy plik promptu z szablonem """
+        prompt_dir = Path('..') / 'prompt'
+        if not prompt_dir.exists():
+            prompt_dir.mkdir(parents=True, exist_ok=True)
+
+        # wywołanie okna zapisu pliku
+        new_filepath = filedialog.asksaveasfilename(
+            title=self.t["select_new_prompt_title"],
+            initialdir=prompt_dir,
+            defaultextension=".txt",
+            filetypes=[(self.t["file_type_text"], "*.txt")],
+            parent=self.root
+        )
+
+        if not new_filepath:
+            return
+
+        # szablon promptu
+        template = (
+            "ROLA: Jesteś ekspertem w dziedzinie paleografii i historii. \n"
+            "Twoim zadaniem jest wykonanie precyzyjnej transkrypcji załączonego skanu.\n\n"
+            "KONTEKST:\n"
+            "Rodzaj dokumentu: \n"
+            "Data: \n"
+            "Język: \n\n"
+            "ZASADY TRANSKRYPCJI:\n"
+            "Wierność absolutna: transkrybuj tekst dokładnie tak, jak jest napisany (wiersz po wierszu, litera po literze).\n"
+            "Oryginalna pisownia: Bezwzględnie zachowaj oryginalną pisownię, gramatykę i interpunkcję, nawet jeśli wydają się błędne lub archaiczne. NIE POPRAWIAJ interpunkcji (np. nie dodawaj brakujących przecinków). NIE ROZWIJAJ skrótów.\n"
+            "Podział wierszy: Zachowaj dokładny podział na wiersze (linie) z oryginału. Każdy nowy wiersz w rękopisie to nowy wiersz w Twojej odpowiedzi.\n\n"
+            "ZARZĄDZANIE NIEPEWNOŚCIĄ:\n"
+            "Jeśli fragment (słowo lub litera) jest całkowicie nieczytelny (plama, zniszczenie), oznacz go jako: [nieczytelne].\n"
+            "Jeśli odczyt jest wątpliwy, ale masz przypuszczenie, zapisz je i dodaj znak zapytania w nawiasie, np.: [słowo?] lub słow[o?].\n"
+            "Jeśli w tekście występuje skreślenie, oznacz je jako: [skreślenie].\n\n"
+            "WSKAZÓWKI:\n"
+            "Zwróć tylko odczytany tekst, bez dodatkowych objaśnień i komentarzy.\n\n"
+            "ZADANIE: Rozpocznij transkrypcję."
+        )
+
+        try:
+            # zapis szablonu do nowego pliku
+            with open(new_filepath, 'w', encoding='utf-8') as f:
+                f.write(template)
+
+            # załadowanie nowo utworzonego promptu jako aktywny
+            if self.load_prompt_content(new_filepath):
+                # otwarcie okna edycji, aby użytkownik mógł dostosować szablon
+                self.edit_current_prompt()
+
+        except Exception as e:
+            messagebox.showerror(self.t["msg_error_title"], self.t["msg_prompt_create_error"] + f": {e}")
 
 
     def start_verification(self):
@@ -816,6 +877,7 @@ Pamiętaj o zasadach oznaczania niepewności:
         self.btn_seria.config(text=self.t["btn_batch"])
         self.btn_prompt_change.config(text=self.t["btn_prompt"])
         self.btn_edit_prompt.config(text=self.t["btn_edit_prompt"])
+        self.btn_new_prompt.config(text=self.t["btn_new_prompt"])
 
         self.refresh_tooltips()
 
@@ -845,6 +907,7 @@ Pamiętaj o zasadach oznaczania niepewności:
         self.btn_smfont_tooltip.update_text(self.t["tt_btn_smfont"])
         self.btn_search_tooltip.update_text(self.t["tt_btn_search"])
         self.btn_cancelsearch_tooltip.update_text(self.t["tt_btn_cancelsearch"])
+        self.btn_new_prompt_tooltip.update_text(self.t["tt_btn_new_prompt"])
 
 
     def show_usage_log(self):
@@ -2204,6 +2267,9 @@ Tekst:
             filename = os.path.basename(filepath)
             self.prompt_filename_var.set(f"{filename}")
             self.current_prompt_path = filepath
+            self.default_prompt = filename
+            self.save_config()
+
             return True
         except Exception as e:
             messagebox.showerror(self.t["msg_load_prompt_error_title"],
@@ -2296,6 +2362,10 @@ Tekst:
         self.save_current_text(silent=True)
         if self.current_index != 0:
             self.current_index = 0
+
+            if self.is_reading_audio:
+                self.stop_reading()
+
             self.load_pair(self.current_index)
 
 
@@ -2307,6 +2377,10 @@ Tekst:
         self.save_current_text(silent=True)
         if self.current_index < len(self.file_pairs) - 1:
             self.current_index += 1
+
+            if self.is_reading_audio:
+                self.stop_reading()
+
             self.load_pair(self.current_index)
 
 
@@ -2318,6 +2392,10 @@ Tekst:
         self.save_current_text(silent=True)
         if self.current_index > 0:
             self.current_index -= 1
+
+            if self.is_reading_audio:
+                self.stop_reading()
+
             self.load_pair(self.current_index)
 
 
@@ -2329,6 +2407,10 @@ Tekst:
         self.save_current_text(silent=True)
         if self.current_index < len(self.file_pairs) - 1:
             self.current_index = len(self.file_pairs) - 1
+
+            if self.is_reading_audio:
+                self.stop_reading()
+
             self.load_pair(self.current_index)
 
 

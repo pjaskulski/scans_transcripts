@@ -163,7 +163,11 @@
         "msg_on_close_text": "Wprowadzone zmiany nie zostały zapisane. Czy na pewno chcesz zamknąć okno i utracić zmiany?",
         "btn_save_prompt": "Zapisz",
         "btn_restore_prompt": "Przywróć z pliku",
-        "msg_audio_gen": "Brak pliku audio dla transkrypcji. Uruchomić generowanie?"
+        "msg_audio_gen": "Brak pliku audio dla transkrypcji. Uruchomić generowanie?",
+        "select_new_prompt_title": "Utwórz nowy prompt",
+        "msg_prompt_create_error": "Nie udało się utworzyć pliku",
+        "tt_btn_new_prompt": "Utwórz nowy plik promptu na podstawie szablonu",
+        "btn_new_prompt": "[NOWY]"
     },
     "EN": {
         "lang_name": "English",
@@ -329,6 +333,10 @@
         "msg_on_close_text": "The changes you have made have not been saved. Are you sure you want to close the window and lose your changes?",
         "btn_save_prompt": "Save",
         "btn_restore_prompt": "Restore from file",
-        "msg_audio_gen": "No audio file for transcription. Start generating?"
+        "msg_audio_gen": "No audio file for transcription. Start generating?",
+        "select_new_prompt_title": "Create a new prompt",
+        "msg_prompt_create_error": "Failed to create file",
+        "tt_btn_new_prompt": "Create a new prompt file based on a template",
+        "btn_new_prompt": "[NEW]"
     }
 }
