@@ -813,18 +813,14 @@ Pamiętaj o zasadach oznaczania niepewności:
 
     def _tag_entities_tei(self, text, entities):
         """ otaczanie nazw własnych tagami TEI (persName, placeName, orgName) """
-        # mapowanie kategorii na tagi TEI
         tag_map = {
             "PERS": "persName",
-            "LOC": "placeName",# LOC jest nieco byt ogólne dla placeName, mogą tu być kraje, państwa itp.
+            "LOC": "placeName",
             "ORG": "orgName"
         }
 
-        # znaki specjalne XML (&, <, >)
         escaped_text = saxutils.escape(text)
 
-        # lista wszystkich nazw do zastąpienia, sortowana od najdłuższych
-        # (aby uniknąć błędnego tagowania fragmentów nazw, np. "Jan" w "Jan Kowalski")
         all_names = []
         for cat, names in entities.items():
             if cat in tag_map:
@@ -835,13 +831,8 @@ Pamiętaj o zasadach oznaczania niepewności:
 
         for name, tag in all_names:
             escaped_name = saxutils.escape(name)
-            # regex z word boundary (\b), aby nie tagować środków innych słów
-            pattern = re.compile(re.escape(escaped_name), re.IGNORECASE)
-            escaped_text = pattern.sub(f'<{tag}>{escaped_name}</tag>', escaped_text)
-
-        # tag zamknięcia
-        for _, tag in all_names:
-            escaped_text = escaped_text.replace('</tag>', f'</{tag}>')
+            pattern = re.compile(rf'\b{re.escape(escaped_name)}\b', re.IGNORECASE)
+            escaped_text = pattern.sub(f'<{tag}>{escaped_name}</{tag}>', escaped_text)
 
         return escaped_text
 
@@ -1321,6 +1312,8 @@ Zwróć wynik WYŁĄCZNIE jako JSON w formacie:
 
             model = "gemini-3-pro-preview" # lub gemini-3-flash-preview
 
+            print('NER: generowanie wyników')
+
             response = client.models.generate_content(
                 model=model,
                 contents=prompt + "\nTekst: " + text,
@@ -1331,6 +1324,7 @@ Zwróć wynik WYŁĄCZNIE jako JSON w formacie:
                 self._log_api_usage(model, response.usage_metadata)
 
             if response.text:
+                print("NER: wyniki przygotowane")
                 json_str = response.text.replace("```json", "").replace("```", "").strip()
                 entities_dict = json.loads(json_str)
                 self.last_entities = entities_dict
@@ -1888,7 +1882,7 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
 
             needs_generation = True
 
-            # sprawdanie czy plik MP3 istnieje i czy suma kontrolna się zgadza
+            # sprawdzanie czy plik MP3 istnieje i czy suma kontrolna się zgadza
             if os.path.exists(mp3_path) and os.path.exists(json_path):
                 try:
                     with open(json_path, 'r', encoding='utf-8') as f:
@@ -1901,11 +1895,13 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
 
             # generowanie pliku tylko jeśli to konieczne
             if needs_generation:
+                print("Generowanie mp3...")
 
                 wav_path = os.path.splitext(pair['img'])[0] + ".wav"
 
                 client = genai.Client()
                 model="gemini-2.5-flash-preview-tts"
+                #model="gemini-2.5-pro-preview-tts"
 
                 prompt = """Przeczytaj uważnie podany dalej tekst. Odczytuj dokładnie,
 oddając oryginalne brzmienie także słów archaicznych.
@@ -1924,8 +1920,11 @@ Tekst:
                                 )
                             )
                         ),
+                        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
                     )
                 )
+
+                print("TTS: wygenerowano")
 
                 data = response.candidates[0].content.parts[0].inline_data.data
 
@@ -2111,9 +2110,10 @@ Tekst:
                     self.current_prompt_path = str(prompt_path)
                 except Exception as e:
                     messagebox.showerror(self.t["msg_error_title"],
-                                         self.t["msg_file_prompt_error"] + f" {self.default_prompt}: {e}", parent=self.root)
+                                         self.t["msg_file_prompt_error"] + f" {self.default_prompt}: {e}",
+                                         parent=self.root)
             else:
-                messagebox.showerror(self.t["msg_prompt_file_missing"], str(e), parent=self.root)
+                messagebox.showerror(self.t["msg_prompt_file_missing"], self.default_prompt, parent=self.root)
 
 
     def select_folder(self):
