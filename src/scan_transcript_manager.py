@@ -1097,6 +1097,8 @@ Pamiętaj o zasadach oznaczania niepewności:
         leg_win.resizable(False, False)
         leg_win.transient(self.root)
 
+        leg_win.grab_set()
+
         # główny kontener z marginesem
         container = ttk.Frame(leg_win, padding=15)
         container.pack(fill=BOTH, expand=True)
@@ -2603,6 +2605,7 @@ Tekst:
         batch_win.title(self.t["batch_win_title"])
         batch_win.geometry("700x700")
         batch_win.transient(self.root)
+        batch_win.grab_set()
 
         # nagłówek
         ttk.Label(batch_win, text=self.t["batch_label_text"], font=("Segoe UI", 12, "bold")).pack(pady=10)
@@ -2904,6 +2907,7 @@ Tekst:
         edit_win.title(self.t["edit_win_title"] + f": {os.path.basename(self.current_prompt_path)}")
         edit_win.geometry("850x600")
         edit_win.transient(self.root)
+        edit_win.grab_set()
 
         # panel na przyciski
         btn_frame = ttk.Frame(edit_win)
