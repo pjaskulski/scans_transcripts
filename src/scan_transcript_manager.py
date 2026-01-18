@@ -1871,6 +1871,12 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
         audio.export(output_file, format="mp3", bitrate="128k")
 
 
+    def _show_tts_progress(self):
+        """ Bezpieczne wyświetlenie paska postępu dla TTS """
+        self.progress_bar.pack(fill=X, pady=(0, 10), before=self.editor_frame)
+        self.progress_bar.start(10)
+
+
     def _tts_worker(self, text):
         """ kod wykonywany w wątku - tworzenie audio i start odtwarzania,
             jeżeli aktualny plik audio jest w pliku, odtwarzanie z pliku bez
@@ -1899,7 +1905,8 @@ Zwróć tylko listę tych danych bez żadnych dodatkowych komentarzy.
 
             # generowanie pliku tylko jeśli to konieczne
             if needs_generation:
-                print("Generowanie mp3...")
+                self.root.after(0, self._show_tts_progress)
+                print(self.t["msg_gen_mp3"])
 
                 wav_path = os.path.splitext(pair['img'])[0] + ".wav"
 
@@ -1955,6 +1962,9 @@ Tekst:
         except Exception as e:
             print(self.t["msg_tts_error"] + f": {e}")
             self.root.after(0, self.stop_reading)
+        finally:
+            # ukrywanie paska postępu
+            self.root.after(0, self._tts_finished)
 
 
     def _tts_finished(self):
@@ -1962,6 +1972,7 @@ Tekst:
         self.progress_bar.stop()
         self.progress_bar.pack_forget()
         self.btn_ner.config(state="normal")
+        self.btn_speak.config(state="normal")
 
 
     def _check_audio_status(self):
@@ -1985,6 +1996,8 @@ Tekst:
         self.btn_speak.config(state="normal")
         self.btn_pause.config(state="disabled", text="||")
         self.btn_stop.config(state="disabled")
+
+        self._tts_finished()
 
 
     def apply_filter(self, mode):

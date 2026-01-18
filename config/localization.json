@@ -172,7 +172,8 @@
         "msg_stop_batch": "Zatrzymywanie procesu...",
         "msg_process_stopped": "Proces przerwany przez użytkownika.",
         "msg_finished": "Przetwarzanie zakończone. ",
-        "msg_interrupted": "Przetwarzanie przerwane. "
+        "msg_interrupted": "Przetwarzanie przerwane. ",
+        "msg_gen_mp3": "Generowanie mp3..."
     },
     "EN": {
         "lang_name": "English",
@@ -347,7 +348,7 @@
         "msg_stop_batch": "Stopping the process...",
         "msg_process_stopped": "Process interrupted by user.",
         "msg_finished": "Processing finished. ",
-        "msg_interrupted": "Processing interrupted. "
-
+        "msg_interrupted": "Processing interrupted. ",
+        "msg_gen_mp3": "Generating mp3..."
     }
 }
