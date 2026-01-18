@@ -139,7 +139,7 @@
         "btn_start": "URUCHOM PRZETWARZANIE",
         "batch_process_text": "Przetwarzanie",
         "batch_worker_file_error": "Błąd przy pliku",
-        "batch_final_msg1": "Zakończono! Przetworzono",
+        "batch_final_msg1": "Przetworzono",
         "batch_final_msg2": "Błędy",
         "batch_final_msg_title": "Koniec",
         "prompt_config_error1": "Błąd konfiguracji",
@@ -167,7 +167,12 @@
         "select_new_prompt_title": "Utwórz nowy prompt",
         "msg_prompt_create_error": "Nie udało się utworzyć pliku",
         "tt_btn_new_prompt": "Utwórz nowy plik promptu na podstawie szablonu",
-        "btn_new_prompt": "[NOWY]"
+        "btn_new_prompt": "[NOWY]",
+        "btn_batch_cancel": "Anuluj",
+        "msg_stop_batch": "Zatrzymywanie procesu...",
+        "msg_process_stopped": "Proces przerwany przez użytkownika.",
+        "msg_finished": "Przetwarzanie zakończone. ",
+        "msg_interrupted": "Przetwarzanie przerwane. "
     },
     "EN": {
         "lang_name": "English",
@@ -309,7 +314,7 @@
         "btn_start": "START PROCESSING",
         "batch_process_text": "Processing",
         "batch_worker_file_error": "Error with file",
-        "batch_final_msg1": "Completed! Processed",
+        "batch_final_msg1": "Processed",
         "batch_final_msg2": "Errors",
         "batch_final_msg_title": "End of processing",
         "prompt_config_error1": "Configuration error",
@@ -337,6 +342,12 @@
         "select_new_prompt_title": "Create a new prompt",
         "msg_prompt_create_error": "Failed to create file",
         "tt_btn_new_prompt": "Create a new prompt file based on a template",
-        "btn_new_prompt": "[NEW]"
+        "btn_new_prompt": "[NEW]",
+        "btn_batch_cancel": "Cancel",
+        "msg_stop_batch": "Stopping the process...",
+        "msg_process_stopped": "Process interrupted by user.",
+        "msg_finished": "Processing finished. ",
+        "msg_interrupted": "Processing interrupted. "
+
     }
 }

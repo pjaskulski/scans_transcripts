@@ -134,6 +134,8 @@ class ManuscriptEditor:
 
         self.is_transcribing = False
         self.btn_ai = None
+        self.stop_batch_flag = False
+        self.batch_checkbox_widgets = []
 
         self.playback = Playback()
 
@@ -2603,7 +2605,7 @@ Tekst:
         # tworzenie okna dialogowego
         batch_win = tk.Toplevel(self.root)
         batch_win.title(self.t["batch_win_title"])
-        batch_win.geometry("700x700")
+        batch_win.geometry("800x700")
         batch_win.transient(self.root)
         batch_win.grab_set()
 
@@ -2617,6 +2619,7 @@ Tekst:
         list_frame.pack(fill=BOTH, expand=True, padx=10, pady=5)
 
         self.batch_vars = [] # pary (indeks_pliku, zmienna_boolean)
+        self.batch_checkbox_widgets = []
 
         for idx, pair in enumerate(self.file_pairs):
             txt_path = pair['txt']
@@ -2643,6 +2646,7 @@ Tekst:
 
             cb = ttk.Checkbutton(row, text=f"{pair['name']} {status_text}", variable=var, bootstyle="round-toggle")
             cb.pack(side=LEFT)
+            self.batch_checkbox_widgets.append(cb)
 
         # panel przycisków sterujących
         btn_panel = ttk.Frame(batch_win, padding=10)
@@ -2670,12 +2674,16 @@ Tekst:
                 messagebox.showwarning("Info", self.t["batch_no_files_selected"], parent=batch_win)
                 return
 
-            # blokada przycisków
+            # blokada i włączenie przycisków
             btn_start.config(state="disabled")
+            btn_cancel_batch.config(state="normal")
 
             # uruchomienie wątku
             self.is_transcribing = True
-            thread = threading.Thread(target=self._batch_worker, args=(selected_indices, batch_win, btn_start))
+            self.stop_batch_flag = False
+
+            thread = threading.Thread(target=self._batch_worker,
+                                      args=(selected_indices, batch_win, btn_start, btn_cancel_batch))
             thread.daemon = True
             thread.start()
 
@@ -2688,13 +2696,52 @@ Tekst:
                                bootstyle="danger")
         btn_start.pack(side=RIGHT, padx=5)
 
+        btn_cancel_batch = ttk.Button(btn_panel, text=self.t["btn_batch_cancel"],
+                               command=self.cancel_batch_processing,
+                               bootstyle="outline-danger", state="disabled")
+        btn_cancel_batch.pack(side=RIGHT, padx=5)
 
-    def _batch_worker(self, selected_indices, window, btn_start):
+
+    def _refresh_batch_list_ui(self):
+        """ aktualizacja checkboxów: odznaczanie tych, które mają już transkrypcję """
+        for i, (idx, var) in enumerate(self.batch_vars):
+            pair = self.file_pairs[idx]
+            txt_path = pair['txt']
+
+            # aktualny stan pliku
+            exists = os.path.exists(txt_path)
+            is_not_empty = exists and os.path.getsize(txt_path) > 0
+
+            if is_not_empty:
+                var.set(False)
+                status = self.t["batch_status_text3"]
+            else:
+                # jeśli plik nadal jest pusty/brakujący
+                status = self.t["batch_status_text1"] if not exists else self.t["batch_status_text2"]
+
+            # aktualizacja etykiety checkboxa
+            if i < len(self.batch_checkbox_widgets):
+                self.batch_checkbox_widgets[i].config(text=f"{pair['name']} {status}")
+
+
+    def cancel_batch_processing(self):
+        """ ustawienie flagi przerwania przetwarzania seryjnego """
+        if self.is_transcribing:
+            self.stop_batch_flag = True
+            self.batch_log_label.config(text=self.t["msg_stop_batch"])
+
+
+    def _batch_worker(self, selected_indices, window, btn_start, btn_cancel_batch):
         """ wątek przetwarzający listę plików """
         total = len(selected_indices)
         errors = 0
 
         for i, idx in enumerate(selected_indices):
+
+            if self.stop_batch_flag:
+                self.root.after(0, lambda: self.batch_log_label.config(text=self.t["msg_process_stopped"]))
+                break
+
             # czy okno nie zostało zamknięte
             if not window.winfo_exists():
                 break
@@ -2721,13 +2768,19 @@ Tekst:
                 errors += 1
                 print(self.t["batch_worker_file_error"] + f" {pair['name']}: {e}")
 
+            self.root.after(0, self._refresh_batch_list_ui)
+
         self.is_transcribing = False
+        self.stop_batch_flag = False
 
         # zakończono
         if window.winfo_exists():
-            final_msg = self.t["batch_final_msg1"] + f": {total}. " + self.t["batch_final_msg2"] + f": {errors}."
+            status = self.t["msg_finished"] if not self.stop_batch_flag else self.t["msg_interrupted"]
+            final_msg = status + self.t["batch_final_msg1"] + f": {i}/{total}. " + self.t["batch_final_msg2"] + f": {errors}."
             self.root.after(0, lambda: self._update_batch_ui(final_msg, 100))
             self.root.after(0, lambda: btn_start.config(state="normal"))
+            self.root.after(0, lambda: btn_cancel_batch.config(state="disabled"))
+            self.root.after(0, self._refresh_batch_list_ui)
             self.root.after(0, lambda: messagebox.showinfo(self.t["batch_final_msg_title"], final_msg, parent=window))
 
             # odświeżanie widok w głównym oknie (jeśli aktualnie wyświetlany plik był zmieniony)
