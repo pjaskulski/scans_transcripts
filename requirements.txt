@@ -3,6 +3,5 @@ Pillow
 python-docx
 python-dotenv
 google-genai
-gTTS
 just_playback
 pydub
